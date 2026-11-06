@@ -1,0 +1,41 @@
+{
+  "name": "mathquant-lab",
+  "private": false,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "纯前端的股市数学模型分析终端：可交互、可回测、可解释，覆盖 A股/港股/美股/日股/韩股",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "serve": "node server.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --pool=threads"
+  },
+  "dependencies": {
+    "echarts": "^5.5.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "undici": "^8.12.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "playwright-core": "^1.64.0",
+    "typescript": "~5.6.2",
+    "vitest": "^2.1.2"
+  },
+  "license": "MIT",
+  "keywords": [
+    "stock",
+    "quant",
+    "technical-analysis",
+    "valuation",
+    "sentiment",
+    "react",
+    "typescript",
+    "vite"
+  ]
+}

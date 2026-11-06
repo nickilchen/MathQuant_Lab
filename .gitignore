@@ -1,0 +1,21 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+tmp/
+*.timestamp-*
+
+# ---- 开源排除项：本地/内部资料，不进入公开仓库 ----
+.env
+.env.*
+!.env.example
+design-prototypes/
+smoke_ai3.mjs
+_*.mjs
+_*.png
+_*.json
+_*.log
+*.local.json
+coverage/
