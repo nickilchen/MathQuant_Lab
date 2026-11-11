@@ -2,7 +2,7 @@
 
 > **MIT 开源 · 纯浏览器端计算 · 仓库不含任何凭据或用户数据**
 
-![市场体检总览 · 暗夜矩阵主题](./docs/screens/overview-dark.jpg)
+![市场体检总览 · 暗夜矩阵主题](./docs/screens/overview-dark.jpg) ![市场体检总览 · 量子白主题](./docs/screens/overview-light.jpg) ![个股分析 · 趋势信号与操作策略](./docs/screens/stock-analysis.jpg)
 
 纯前端（Vite + React + TypeScript + ECharts）的股市数学模型应用：把六类经典市场模型做成**可交互、可回测、可解释**的页面，并内置**策略引擎**自动合成买卖信号，所有计算在浏览器端完成，零后端。
 
@@ -15,10 +15,7 @@
 
 > 配图来自仓库内已有的界面截图，压缩后放在 `docs/screens/`（合计约 470KB）。界面随版本迭代，以实际运行为准。
 
-<p align="center">
-  <img src="./docs/screens/overview-dark.jpg" width="49%" alt="暗夜矩阵主题">
-  <img src="./docs/screens/overview-light.jpg" width="49%" alt="量子白主题">
-</p>
+![暗夜矩阵主题](./docs/screens/overview-dark.jpg) ![量子白主题](./docs/screens/overview-light.jpg)
 
 内置三套主题（暗夜矩阵 / 赛博霓虹 / 量子白）。上图是同一张「市场体检总览」在暗色与亮色下的呈现：HMM 状态、因子投票、波动率、MLP 四类观点先归一化，再合成为综合信号与回测净值曲线。
 
@@ -117,9 +114,29 @@ npm run build      # 生产构建 → dist/
 
 每个页面底部都有「📐 数学原理」折叠面板，含完整公式与推导说明。
 
+![市场体检总览：四模型观点合成与回测](./docs/screens/modules/01-overview.jpg)
+
+*总览页把 HMM、因子投票、GARCH 波动率、MLP 四类模型的观点归一化后合成综合信号，并在同一张图上给出样本外净值曲线。*
+
 ## 模块图解（18 个模块，点击展开界面截图）
 
 > 配图来自仓库内已有的界面原型与本地运行实拍，压缩后放在 `docs/screens/modules/`（共 1.7MB）。点击标题展开查看界面；界面随版本迭代，以实际运行为准。
+
+### 全部模块 · 一图速览
+
+> 18 个模块的界面截图集中在这里，点击任意一张可查看原图；各模块的功能说明见后文折叠区。
+
+![📊 市场体检总览](./docs/screens/modules/01-overview.jpg) ![🎯 策略信号](./docs/screens/modules/02-strategy.jpg) ![🔍 个股分析](./docs/screens/modules/03-stock.jpg)
+
+![🔁 做 T 分析](./docs/screens/modules/04-t0.jpg) ![📈 波段 · 抄底](./docs/screens/modules/05-swing.jpg) ![💎 价值估值](./docs/screens/modules/06-valuation.jpg)
+
+![🌡️ 情绪晴雨表](./docs/screens/modules/07-sentiment.jpg) ![🏛️ 机构持仓](./docs/screens/modules/08-institutions.jpg) ![🔔 实时监控](./docs/screens/modules/09-monitor.jpg)
+
+![⭐ 自选池](./docs/screens/modules/10-watchlist.jpg) ![🆚 多标的对比](./docs/screens/modules/11-compare.jpg) ![🚀 动能动量](./docs/screens/modules/12-momentum.jpg)
+
+![🧠 HMM 模型](./docs/screens/modules/13-hmm.jpg) ![🗳️ 因子投票](./docs/screens/modules/14-factors.jpg) ![🌊 波动率模型](./docs/screens/modules/15-vol.jpg)
+
+![⚖️ 风险平价](./docs/screens/modules/16-riskparity.jpg) ![🧬 PCA 套利](./docs/screens/modules/17-pca.jpg) ![🤖 机器学习](./docs/screens/modules/18-ml.jpg)
 
 ### 一、市场判断与策略
 
@@ -297,6 +314,10 @@ ERC（各资产风险贡献相等）、HRP（层次聚类递归二分）、inver
 
 ## 市场覆盖
 
+![多标的对比：跨市场按共同交易日对齐](./docs/screens/modules/11-compare.jpg)
+
+五个市场的行情走同一套取数链，跨市场对比时按日期求交集对齐，不按下标硬拼：
+
 | 市场 | 指数 / 板块资产 | 数据源 |
 |---|---|---|
 | A股 | 8 指数 + 10 行业 ETF + **全部 A 股个股（搜索）** | 腾讯（备份：东财、新浪） |
@@ -332,6 +353,8 @@ Naver 官方接口 `api.finance.naver.com/siseJson.naver` 数据完整但不返�
 风险平价资产池含恒生ETF / 纳指ETF / 标普500ETF / 日经ETF 等跨境 QDII 及港股龙头。
 
 ### 情绪晴雨表（七维 → 五档天气）
+
+![情绪晴雨表：七维打分与消息面分级](./docs/screens/modules/07-sentiment.jpg)
 
 `/sentiment` 把「全网情绪、资金、涨跌、讨论」拆成七个可解释的维度，各自打 0~100 分，再加权成一个市场温度，
 映射成 ☀️晴 / ⛅多云 / ☁️阴 / 🌧️小雨 / ⛈️暴雨 五档。
@@ -396,6 +419,8 @@ Naver 官方接口 `api.finance.naver.com/siseJson.naver` 数据完整但不返�
 绝对值不能与当日的六维分直接比较——页面里写明了这一点。
 
 ### 机构持仓（市场 → 行业 → 个股，三 Tab）
+
+![机构持仓：市场全景、行业下钻与个股透视](./docs/screens/modules/08-institutions.jpg)
 
 `/institutions` 按「① 市场大局 → ② 行业全景 → ③ 个股透视」三步展开，顶部步骤条切换，层层下钻：
 
