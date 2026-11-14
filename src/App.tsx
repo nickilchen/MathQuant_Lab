@@ -1,4 +1,5 @@
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import Overview from './pages/Overview';
 import StrategyPage from './pages/StrategyPage';
 import StockPage from './pages/StockPage';
@@ -42,8 +43,20 @@ const NAV = [
 ];
 
 export default function App() {
+  const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
+  const currentLabel = NAV.find((n) => n.path === location.pathname)?.label ?? '总览 Dashboard';
+
+  // 路由变化（含浏览器前进/后退、点导航）自动收起抽屉
+  useEffect(() => setNavOpen(false), [location.pathname]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
-    <div className="app">
+    <div className={'app' + (navOpen ? ' nav-open' : '')}>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">📐</span>
@@ -54,7 +67,7 @@ export default function App() {
         </div>
         <nav className="nav">
           {NAV.map((n) => (
-            <NavLink key={n.path} to={n.path} end={n.path === '/'} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+            <NavLink key={n.path} to={n.path} end={n.path === '/'} onClick={() => setNavOpen(false)} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
               <span className="nav-icon">{n.icon}</span>
               <span>{n.label}</span>
             </NavLink>
@@ -71,7 +84,21 @@ export default function App() {
           </div>
         </div>
       </aside>
+      <div className="nav-overlay" onClick={() => setNavOpen(false)} />
       <div className="main">
+        <div className="mobile-bar">
+          <button
+            type="button"
+            className="nav-toggle"
+            onClick={() => setNavOpen((v) => !v)}
+            aria-label={navOpen ? '关闭导航' : '打开导航'}
+            aria-expanded={navOpen}
+          >
+            <span /><span /><span />
+          </button>
+          <span className="mobile-bar-title">{currentLabel}</span>
+          <span className="mobile-bar-brand">MathQuant</span>
+        </div>
         <HeaderBar />
         <main className="content">
           <ErrorBoundary>

@@ -576,6 +576,96 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
   .header .sub { display: none; }
 }
 
+/* ============================================================================
+   移动端（≤768px）：抽屉导航 + 单行工具条
+   放在 900px 规则之后，用于覆盖「64px 图标条」的平板折中方案
+   ========================================================================== */
+.mobile-bar, .nav-overlay { display: none; }
+
+@media (max-width: 768px) {
+  /* 侧栏改为抽屉，不再占用内容宽度；展开后恢复完整文字标签 */
+  .sidebar {
+    position: fixed; z-index: 120; top: 0; bottom: 0; left: 0;
+    width: 268px; max-width: 82vw;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 12px 0 32px -12px rgba(0, 0, 0, 0.55);
+  }
+  .app.nav-open .sidebar { transform: none; }
+  .sidebar::after { display: none; }
+  .brand { justify-content: flex-start; padding: 14px; }
+  .brand > div { display: block; }
+  .nav { padding: 8px; }
+  .nav-item { justify-content: flex-start; padding: 11px 10px; min-height: 44px; font-size: 14px; }
+  .nav-item span:not(.nav-icon) { display: inline; }
+  .sidebar-foot { display: block; }
+
+  .nav-overlay {
+    display: block; position: fixed; inset: 0; z-index: 110;
+    background: rgba(0, 0, 0, 0.55); opacity: 0; pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .app.nav-open .nav-overlay { opacity: 1; pointer-events: auto; }
+
+  /* 移动端顶栏：汉堡 + 当前页名 */
+  .mobile-bar {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    height: 48px; padding: 0 12px;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .nav-toggle {
+    width: 40px; height: 40px; flex: 0 0 auto;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    background: var(--panel-2); cursor: pointer;
+  }
+  .nav-toggle span { display: block; width: 18px; height: 2px; border-radius: 2px; background: var(--text); }
+  .mobile-bar-title { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mobile-bar-brand { margin-left: auto; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+  .main { width: 100%; max-width: 100%; }
+
+  /* 工具条单行横滚，不再折成三行；弹窗改 fixed 以免被横滚容器裁掉 */
+  .header {
+    flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 8px 10px; scrollbar-width: none;
+  }
+  .header::-webkit-scrollbar { display: none; }
+  .header h1, .header .sub, .header-spacer { display: none; }
+  .header > * { flex: 0 0 auto; }
+  .header-field { font-size: 12px; }
+  .header-field select { max-width: 116px; }
+  .gear-btn { min-height: 34px; }
+  .settings-pop {
+    position: fixed; top: 96px; left: 12px; right: 12px; width: auto;
+    max-height: 70vh; overflow-y: auto; z-index: 130;
+  }
+
+  .content { padding: 12px 12px 24px; }
+  .page-title-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .page-title-row h2 { font-size: 17px; }
+  .page-title-row .en { font-size: 11px; }
+  .page-lead { font-size: 12px; }
+  .panel { padding: 12px; }
+  .grid-2, .grid-3 { gap: 12px; }
+  .disclaimer { font-size: 11.5px; }
+
+  /* 控制栏与热门标的：内部横滚，标签不再被压成竖排 */
+  .control-bar { gap: 10px; padding: 10px; }
+  .ctrl-group {
+    width: 100%; padding-right: 0; border-right: none;
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+  }
+  .ctrl-group::-webkit-scrollbar { display: none; }
+  .ctrl-group > * { flex: 0 0 auto; }
+  .ctrl-group .g-label { position: sticky; left: 0; background: var(--panel); padding-right: 6px; }
+  .chip-toggle { white-space: nowrap; padding: 8px 12px; min-height: 36px; }
+  .t0-field { flex: 0 0 auto; }
+  .t0-field input { max-width: 120px; }
+
+  /* 表格只在自身容器内横滚，绝不撑破页面 */
+  .tbl-wrap { max-width: 100%; min-width: 0; -webkit-overflow-scrolling: touch; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
