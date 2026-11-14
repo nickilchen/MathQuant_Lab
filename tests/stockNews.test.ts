@@ -153,6 +153,9 @@ describe('scoreAnn 重要性', () => {
 });
 
 describe('analyzeAnnouncements 聚合', () => {
+  // 固定「今天」：时效加分会让立案 vs 中标 12 亿的排序随真实日期漂移，
+  // 不固定 now 时这条用例会在数周后自行失效。
+  const NOW = new Date('2026-11-03T00:00:00').getTime();
   const list: AnnInput[] = [
     ann('关于收到证监会立案告知书的公告', '2026-11-02'),
     ann('持股5%以上股东减持股份计划公告', '2026-11-01'),
@@ -163,13 +166,13 @@ describe('analyzeAnnouncements 聚合', () => {
   ];
 
   it('按重要性排序，立案排第一', () => {
-    const r = analyzeAnnouncements(list, '某公司');
+    const r = analyzeAnnouncements(list, '某公司', NOW);
     expect(r.items[0].primary).toBe('risk');
     expect(r.items[0].score).toBeGreaterThanOrEqual(r.items[1].score);
   });
 
   it('统计多空与标签条数', () => {
-    const r = analyzeAnnouncements(list, '某公司');
+    const r = analyzeAnnouncements(list, '某公司', NOW);
     expect(r.bull).toBe(2); // 回购 + 中标
     expect(r.bear).toBe(2); // 立案 + 减持
     expect(r.neutral).toBe(2); // 业绩说明 + 变更地址
@@ -178,7 +181,7 @@ describe('analyzeAnnouncements 聚合', () => {
   });
 
   it('公司行为画像：回购/减持/增持/中标/立案各自计数', () => {
-    const r = analyzeAnnouncements(list, '某公司');
+    const r = analyzeAnnouncements(list, '某公司', NOW);
     expect(r.behavior.buyback).toBe(1);
     expect(r.behavior.reduce).toBe(1);
     expect(r.behavior.contract).toBe(1);
@@ -187,12 +190,12 @@ describe('analyzeAnnouncements 聚合', () => {
   });
 
   it('只有减持没有回购增持时给出警示结论', () => {
-    const r = analyzeAnnouncements([ann('关于股东减持股份的公告'), ann('关于变更办公地址的公告')], '某公司');
+    const r = analyzeAnnouncements([ann('关于股东减持股份的公告'), ann('关于变更办公地址的公告')], '某公司', NOW);
     expect(r.lines.join('')).toContain('产业资本在往外走');
   });
 
   it('有回购无减持时给出正面结论', () => {
-    const r = analyzeAnnouncements([ann('关于回购公司股份的公告')], '某公司');
+    const r = analyzeAnnouncements([ann('关于回购公司股份的公告')], '某公司', NOW);
     expect(r.lines.join('')).toContain('公司自己在买');
   });
 

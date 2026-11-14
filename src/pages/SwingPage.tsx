@@ -10,8 +10,9 @@ import { loadRecent, loadWatchlist } from '../data/watchlist';
 import { marketRuleOf } from '../data/marketRules';
 import { DEFAULT_SWING_CONFIG, analyzeSwing, type SwingConfig } from '../math/swing';
 import { DEFAULT_PANIC_CONFIG, analyzePanic, type PanicConfig } from '../math/panic';
+import { DEFAULT_BOTTOMING_CONFIG, detectBottoming, type BottomingConfig } from '../math/bottoming';
 
-type Tab = 'swing' | 'panic';
+type Tab = 'swing' | 'panic' | 'bottoming';
 
 const HOT: StockHit[] = [
   { code: 'sh600519', name: '贵州茅台', market: 'CN', marketLabel: 'A股', secid: '1.600519' },
@@ -48,6 +49,7 @@ export default function SwingPage() {
   const [picked, setPicked] = useState<StockHit | null>(null);
   const [swingCfg, setSwingCfg] = useState<SwingConfig>(DEFAULT_SWING_CONFIG);
   const [panicCfg, setPanicCfg] = useState<PanicConfig>(DEFAULT_PANIC_CONFIG);
+  const [bottomingCfg, setBottomingCfg] = useState<BottomingConfig>(DEFAULT_BOTTOMING_CONFIG);
   const debounce = useRef<ReturnType<typeof setTimeout>>();
   const skipSearch = useRef(false);
 
@@ -137,20 +139,70 @@ export default function SwingPage() {
     () => (tab === 'panic' && bars ? analyzePanic(bars, { ...panicCfg, entryDelay }, lot) : null),
     [tab, bars, panicCfg, entryDelay, lot]
   );
+  const bottoming = useMemo(
+    () => (tab === 'bottoming' && bars && bars.length >= 120 ? detectBottoming(bars, bottomingCfg, lot) : null),
+    [tab, bars, bottomingCfg, lot]
+  );
 
   const chart = useMemo(() => {
-    if (!bars || (!swing && !panic)) return null;
+    if (!bars || (!swing && !panic && !bottoming)) return null;
     const n = Math.min(120, bars.length);
     const seg = bars.slice(-n);
     const labels = seg.map((b) => b.date.slice(5));
     const series: { name: string; data: (number | null)[]; color: string; lineWidth: number }[] = [
       { name: '收盘', data: seg.map((b) => b.close), color: C.accent, lineWidth: 2 }
     ];
-    if (tab === 'swing' && swing) {
-      series.push({ name: 'MA20', data: swing.ma20.slice(-n), color: C.orange, lineWidth: 1.4 });
-      series.push({ name: 'MA60', data: swing.ma60.slice(-n), color: C.purple, lineWidth: 1.4 });
+    if ((tab === 'swing' && swing) || (tab === 'bottoming' && bottoming)) {
+      const src = tab === 'swing' ? swing!.ma20 : bottoming!.ma20;
+      const src60 = tab === 'swing' ? swing!.ma60 : bottoming!.ma60;
+      series.push({ name: 'MA20', data: src.slice(-n), color: C.orange, lineWidth: 1.4 });
+      series.push({ name: 'MA60', data: src60.slice(-n), color: C.purple, lineWidth: 1.4 });
     }
     const opt = lineOption(labels, series, { yName: cur });
+    const first = (opt.series as unknown as { markLine?: unknown; markArea?: unknown }[])[0];
+    const setScale = () => {
+      // 不写死 min/max：ECharts 在绝对范围下会算出 1e9 这种鬼刻度。
+      // scale 让它按数据自动缩放，目标价超出范围时线不显示（计划卡片里仍有数字）。
+      const yAxis = opt.yAxis as unknown as { scale?: boolean } | { scale?: boolean }[];
+      if (yAxis && !Array.isArray(yAxis)) yAxis.scale = true;
+    };
+
+    if (tab === 'bottoming' && bottoming) {
+      const p = bottoming.plan;
+      const list = [
+        { name: '颈线', yAxis: bottoming.neck, color: C.orange },
+        { name: '底部低点', yAxis: bottoming.baseLow, color: C.purple },
+        ...(p ? [{ name: '止损', yAxis: p.stop, color: C.down }] : [])
+      ];
+      first.markLine = {
+        symbol: 'none',
+        silent: true,
+        label: { formatter: '{b}', fontSize: 10, color: C.text, position: 'middle' },
+        data: list.map((x) => ({ name: x.name, yAxis: x.yAxis, lineStyle: { color: x.color, type: 'dashed', width: 1 } }))
+      };
+      // 背景带按结构位切分：主升高点 → 下跌段 → 降波筑底段（示意，不是逐根聚类）
+      const off = bars.length - n;
+      const at = (k: number) => labels[Math.min(n - 1, Math.max(0, k))];
+      const hi = Math.max(0, bottoming.highIndex - off);
+      const bs = Math.max(hi, bottoming.baseStart - off);
+      const areas: { name: string; from: number; to: number; color: string }[] = [
+        { name: '下跌段', from: hi, to: bs, color: C.down },
+        { name: '降波筑底', from: bs, to: n - 1, color: C.amber }
+      ];
+      first.markArea = {
+        silent: true,
+        label: { fontSize: 10, color: C.text, position: 'insideTop' },
+        data: areas
+          .filter((a) => a.to > a.from)
+          .map((a) => [
+            { name: a.name, xAxis: at(a.from), itemStyle: { color: a.color, opacity: 0.07 } },
+            { xAxis: at(a.to) }
+          ])
+      };
+      setScale();
+      return opt;
+    }
+
     const levels = tab === 'swing' ? swing?.levels : panic?.plan;
     if (levels) {
       const list =
@@ -164,19 +216,16 @@ export default function SwingPage() {
               { name: '止损', yAxis: panic!.plan!.stop, color: C.down },
               { name: '目标', yAxis: panic!.plan!.target1, color: C.up }
             ];
-      (opt.series as unknown as { markLine?: unknown }[])[0].markLine = {
+      first.markLine = {
         symbol: 'none',
         silent: true,
         label: { formatter: '{b}', fontSize: 10, color: C.text, position: 'middle' },
         data: list.map((x) => ({ name: x.name, yAxis: x.yAxis, lineStyle: { color: x.color, type: 'dashed', width: 1 } }))
       };
-      // 不写死 min/max：ECharts 在绝对范围下会算出 1e9 这种鬼刻度。
-      // scale 让它按数据自动缩放，目标价超出范围时线不显示（计划卡片里仍有数字）。
-      const yAxis = opt.yAxis as unknown as { scale?: boolean } | { scale?: boolean }[];
-      if (yAxis && !Array.isArray(yAxis)) yAxis.scale = true;
+      setScale();
     }
     return opt;
-  }, [bars, tab, swing, panic, cur]);
+  }, [bars, tab, swing, panic, bottoming, cur]);
 
   const swingColor =
     swing?.verdict === '可做多'
@@ -190,15 +239,27 @@ export default function SwingPage() {
   const panicColor =
     panic?.triggered ? 'var(--up)' : panic && panic.score >= 40 ? 'var(--amber)' : 'var(--text-3)';
 
+  const bottomingColor =
+    bottoming?.signal === '筑底确认·买入'
+      ? 'var(--up)'
+      : bottoming?.signal === '筑底中·小仓试探'
+        ? 'var(--amber)'
+        : bottoming?.signal === '筑底失败·离场'
+          ? 'var(--down)'
+          : 'var(--text-3)';
+
+  const bp = bottoming ? bottoming.plan : null;
+
   return (
     <div>
       <div className="page-title-row">
-        <h2>📈 波段 · 抄底短线</h2>
-        <span className="en">Swing &amp; Panic Bottom</span>
+        <h2>📈 波段 · 抄底 · 筑底</h2>
+        <span className="en">Swing · Panic · Base Building</span>
       </div>
       <p className="page-lead">
         <b>波段</b>：看趋势与位置，给「回踩买 / 突破买」的入场、止损、目标与仓位，持有 3~20 个交易日。
         <b>抄底</b>：先给恐慌程度打分，再用这只股票<b>自己的历史</b>回答「同样跌幅后 1/3/5 天涨跌概率」。
+        <b>降波筑底</b>：识别「大涨 → 逐级下跌 → 波动与量能收敛 → 低点抬高 → 放量突破」这段中期底部构造，给筑底信号与<b>小仓试探 / 破底即走</b>计划。
         覆盖 <b>A 股 / 港股 / 美股 / 日股 / 韩股</b>，按各市场 T+1、涨跌停、每手股数给可执行的计划。
       </p>
 
@@ -240,9 +301,9 @@ export default function SwingPage() {
       <div className="panel" style={{ marginTop: 12 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
           <CtrlGroup label="模式">
-            {(['swing', 'panic'] as Tab[]).map((t) => (
+            {(['swing', 'panic', 'bottoming'] as Tab[]).map((t) => (
               <button key={t} type="button" className={`chip-toggle${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
-                {t === 'swing' ? '波段（3~20 日）' : '恐慌抄底（1~5 日）'}
+                {t === 'swing' ? '波段（3~20 日）' : t === 'panic' ? '恐慌抄底（1~5 日）' : '降波筑底（中期）'}
               </button>
             ))}
           </CtrlGroup>
@@ -266,7 +327,7 @@ export default function SwingPage() {
                 <input type="number" value={swingCfg.maxHoldDays} onChange={(e) => setSwingCfg((c) => ({ ...c, maxHoldDays: num(e.target.value, c.maxHoldDays) }))} />
               </label>
             </>
-          ) : (
+          ) : tab === 'panic' ? (
             <>
               <label className="t0-field">
                 跌幅门槛 %
@@ -283,6 +344,37 @@ export default function SwingPage() {
               <label className="t0-field">
                 单笔风险 %
                 <input type="number" step="0.1" value={panicCfg.riskPct} onChange={(e) => setPanicCfg((c) => ({ ...c, riskPct: num(e.target.value, c.riskPct) }))} />
+              </label>
+            </>
+          ) : (
+            <>
+              <label className="t0-field">
+                本金
+                <input type="number" value={bottomingCfg.capital} onChange={(e) => setBottomingCfg((c) => ({ ...c, capital: num(e.target.value, c.capital) }))} />
+              </label>
+              <label className="t0-field">
+                试探仓 %
+                <input
+                  type="number" step="1" min="1" max="50"
+                  value={Math.round(bottomingCfg.probePct * 100)}
+                  onChange={(e) => setBottomingCfg((c) => ({ ...c, probePct: Math.min(0.5, num(e.target.value, c.probePct * 100) / 100) }))}
+                />
+              </label>
+              <label className="t0-field">
+                确认后总仓 %
+                <input
+                  type="number" step="1" min="1" max="100"
+                  value={Math.round(bottomingCfg.confirmPct * 100)}
+                  onChange={(e) => setBottomingCfg((c) => ({ ...c, confirmPct: Math.min(1, num(e.target.value, c.confirmPct * 100) / 100) }))}
+                />
+              </label>
+              <label className="t0-field">
+                突破量比
+                <input
+                  type="number" step="0.1" min="1"
+                  value={bottomingCfg.breakoutVol}
+                  onChange={(e) => setBottomingCfg((c) => ({ ...c, breakoutVol: num(e.target.value, c.breakoutVol) }))}
+                />
               </label>
             </>
           )}
@@ -307,6 +399,14 @@ export default function SwingPage() {
         <div className="panel notice">
           <div className="panel-title">⚠️ 日 K 不足 80 根</div>
           <div className="panel-desc">波段至少需要 80 根日 K（MA60 + 20 日结构位），请把顶部回看周期调大后重试。</div>
+        </div>
+      )}
+      {tab === 'bottoming' && picked && bars && bars.length < 120 && (
+        <div className="panel notice">
+          <div className="panel-title">⚠️ 日 K 不足 120 根</div>
+          <div className="panel-desc">
+            降波筑底要同时看到主升段（60 日）、下跌段与筑底窗口，至少 120 根日 K，建议把顶部回看周期调到 250 日以上。当前 {bars.length} 根。
+          </div>
         </div>
       )}
 
@@ -498,11 +598,146 @@ export default function SwingPage() {
         </>
       )}
 
+      {/* ===== 降波筑底 ===== */}
+      {tab === 'bottoming' && bottoming && (
+        <>
+          <div className="panel" style={{ borderWidth: 2, borderColor: bottomingColor, background: `color-mix(in srgb, ${bottomingColor} 8%, var(--panel))` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 27, fontWeight: 900, color: bottomingColor, whiteSpace: 'nowrap' }}>{bottoming.signal}</div>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>
+                  筑底评分 {bottoming.score}<span style={{ fontSize: 13, color: 'var(--text-3)' }}> / 100</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 3 }}>
+                  收盘 {bottoming.close.toFixed(2)} {cur} · 波动压缩 {(bottoming.compress * 100).toFixed(0)}% · 量能压缩 {(bottoming.volCompress * 100).toFixed(0)}% · 距顶 {bottoming.barsFromHigh} 日
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 240, fontSize: 13, color: 'var(--text-2)' }}>
+                {bp?.summary ??
+                  (bottoming.signal === '筑底失败·离场'
+                    ? '底部已破，形态失败。若持有试探仓，按铁律立即离场，不要摊平。'
+                    : bottoming.signal === '不符合形态'
+                      ? '当前不是「大涨后降波筑底」形态，本模块不给信号。'
+                      : '还在等结构确认，当前不给任何仓位。缩量横盘也可能是下跌中继，收敛本身不是买入理由。')}
+              </div>
+            </div>
+          </div>
+
+          {bp && (
+            <Panel
+              title="🎯 操作策略"
+              icon="🎯"
+              desc={bp.action === 'probe' ? '小仓试探：先买一点点，放量确认后再加，破底立刻走' : '筑底确认：放量突破颈线后才允许把仓位加上去'}
+            >
+              <div className="plan-grid">
+                <div className="plan-cell">
+                  <span>入场区间</span>
+                  <b>{bp.entryLow.toFixed(2)} ~ {bp.entryHigh.toFixed(2)}</b>
+                  <small>{cur} · {bp.action === 'probe' ? '现价附近分批' : '突破回踩颈线'}</small>
+                </div>
+                <div className="plan-cell">
+                  <span>{bp.action === 'probe' ? '试探仓位' : '目标总仓'}</span>
+                  <b>{(bp.positionPct * 100).toFixed(0)}% · {bp.shares > 0 ? `${bp.shares} 股` : '不足一手'}</b>
+                  <small>约 {bp.amount.toFixed(0)} {cur} · 本金 {bottomingCfg.capital.toFixed(0)}</small>
+                </div>
+                <div className="plan-cell">
+                  <span>止损（铁律）</span>
+                  <b style={{ color: 'var(--down)' }}>{bp.stop.toFixed(2)}</b>
+                  <small>底部低点 − {bottomingCfg.atrStop} ATR · 收盘破位即走</small>
+                </div>
+                <div className="plan-cell">
+                  <span>目标 1</span>
+                  <b style={{ color: 'var(--up)' }}>{bp.target1.toFixed(2)}</b>
+                  <small>{bp.action === 'probe' ? '先看颈线' : '箱体量度涨幅'}</small>
+                </div>
+                <div className="plan-cell">
+                  <span>目标 2</span>
+                  <b>{bp.target2.toFixed(2)}</b>
+                  <small>{bp.action === 'probe' ? '突破后的量度位' : '前高回撤 0.618 位'}</small>
+                </div>
+                <div className="plan-cell">
+                  <span>盈亏比</span>
+                  <b style={{ color: bp.rrOk ? 'var(--up)' : 'var(--amber)' }}>{bp.rr.toFixed(2)}</b>
+                  <small>参考 {bottomingCfg.minRR} · 单笔风险约 {bp.riskAmount.toFixed(0)} {cur}</small>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12, marginTop: 14 }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', background: 'var(--panel-2)' }}>
+                  <b style={{ fontSize: 13 }}>➕ 什么时候才加仓</b>
+                  <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5, lineHeight: 2, color: 'var(--text-2)' }}>
+                    {bp.addTriggers.map((t, k) => <li key={k}>{t}</li>)}
+                  </ul>
+                </div>
+                <div style={{ border: '1px solid var(--border)', borderLeft: '4px solid var(--down)', borderRadius: 8, padding: '12px 14px', background: 'var(--panel-2)' }}>
+                  <b style={{ fontSize: 13 }}>🛑 什么时候必须走</b>
+                  <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5, lineHeight: 2, color: 'var(--text-2)' }}>
+                    {bp.exitTriggers.map((t, k) => <li key={k}>{t}</li>)}
+                  </ul>
+                </div>
+              </div>
+              {bp.shares === 0 && (
+                <div className="inst-hint" style={{ marginTop: 10, color: 'var(--amber)' }}>
+                  ⚠️ 按当前本金与仓位比例算出的金额不足 1 手（每手 {lot} 股），暂时建不了仓。请调高「本金」或「试探仓 %」。
+                </div>
+              )}
+              {!bp.rrOk && (
+                <div className="inst-hint" style={{ marginTop: 10, color: 'var(--amber)' }}>
+                  ⚠️ 第一目标盈亏比 {bp.rr.toFixed(2)} 低于参考值 {bottomingCfg.minRR}，上方空间偏小，仓位已压回试探档，别一次打满。
+                </div>
+              )}
+            </Panel>
+          )}
+
+          <Panel title="📡 六个筑底信号详解" icon="📡" desc="每个信号都用大白话说明现在是什么状态、对你意味着什么；六项合计 100 分">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+              {bottoming.factors.map((f) => (
+                <div
+                  key={f.key}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderLeft: `4px solid ${f.ok ? 'var(--up)' : 'var(--gray)'}`,
+                    borderRadius: 8,
+                    padding: '12px 14px',
+                    background: 'var(--panel-2)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 16 }}>{f.icon}</span>
+                    <b style={{ fontSize: 13.5 }}>{f.name}</b>
+                    <span style={{ marginLeft: 'auto', fontSize: 12, color: f.ok ? 'var(--up)' : 'var(--text-3)', fontWeight: 700 }}>
+                      {f.score}/{f.max} · {f.value}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.8 }}>{f.plain}</div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="📋 判定依据" icon="📋" desc="形态前置、压缩比、结构位、评分门槛全部写清楚，不做黑箱">
+            <div className="news-brief">
+              {bottoming.lines.map((l, k) => (
+                <p key={k}><span className="nb-dot" />{l}</p>
+              ))}
+            </div>
+            <MetricGrid items={bottoming.facts.map((f) => ({ label: f.label, value: f.value, tone: f.tone }))} />
+          </Panel>
+
+          {chart && (
+            <Panel title="📈 价格 · 颈线 · 底部低点" icon="📈" desc="最近 120 个交易日；背景带按下跌段 / 降波筑底段示意，虚线为颈线、底部低点与止损">
+              <EChart option={chart} height={340} />
+            </Panel>
+          )}
+        </>
+      )}
+
       <Panel title="⚠️ 使用边界" icon="⚠️">
         <div style={{ fontSize: 13, lineHeight: 2.1, color: 'var(--text-2)' }}>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             <li><b>波段</b>只做多头：下跌中继不给计划，区间震荡只做区间不做追多。评分是「当前位置值不值得进」，不是预测涨幅。</li>
             <li><b>抄底</b>的胜率来自这只股票自己的历史，样本少的时候不可靠；历史相似不等于这次一样，重大利空（造假、退市、政策）下技术性抄底会连续失效。</li>
+            <li><b>降波筑底</b>只识别「大涨 → 逐级下跌 → 波动与量能双收敛」这一段。缩量横盘同样可能是下跌中继，所以只收敛不突破一律停在观察档；试探仓很小、破底必须即走，加仓的唯一条件是放量站上颈线。至少需要 120 根日 K，建议 250 根以上。</li>
             <li><b>涨跌停与 T+1</b>：A 股跌停可能买不到、T+1 当天不能卖；日韩有値幅制限，港股美股无涨跌停但单日波动更大。计划里的价格是「挂单价」，不是「一定能成交」。</li>
             <li>所有计划都假设按止损离场。不设止损、亏损加仓，再好的入场也会变成套牢。</li>
           </ul>

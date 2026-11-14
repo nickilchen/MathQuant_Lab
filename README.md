@@ -1,15 +1,19 @@
 # MathQuant Lab · 数学模型股市分析终端
 
+[![CI](https://github.com/nickilchen/MathQuant_Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/nickilchen/MathQuant_Lab/actions/workflows/ci.yml) [![Deploy Pages](https://github.com/nickilchen/MathQuant_Lab/actions/workflows/pages.yml/badge.svg)](https://github.com/nickilchen/MathQuant_Lab/actions/workflows/pages.yml) [![Release](https://img.shields.io/github/v/release/nickilchen/MathQuant_Lab)](https://github.com/nickilchen/MathQuant_Lab/releases) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 > **MIT 开源 · 纯浏览器端计算 · 仓库不含任何凭据或用户数据**
+
+**仓库**：<https://github.com/nickilchen/MathQuant_Lab> · **在线体验**：<https://nickilchen.github.io/MathQuant_Lab/>
 
 ![市场体检总览 · 暗夜矩阵主题](./docs/screens/overview-dark.jpg) ![市场体检总览 · 量子白主题](./docs/screens/overview-light.jpg) ![个股分析 · 趋势信号与操作策略](./docs/screens/stock-analysis.jpg)
 
 纯前端（Vite + React + TypeScript + ECharts）的股市数学模型应用：把六类经典市场模型做成**可交互、可回测、可解释**的页面，并内置**策略引擎**自动合成买卖信号，所有计算在浏览器端完成，零后端。
 
 - **看得懂**：每个模型页底部都有「📐 数学原理」折叠面板，公式与推导直接摊开
-- **算得快**：`math/` 全部是纯函数，30 个测试文件 / 447 个用例覆盖边界与口径
+- **算得快**：`math/` 全部是纯函数，31 个测试文件 / 461 个用例覆盖边界与口径
 - **拿得到**：五市场行情与消息面走多源降级 + 按 host 限流，任一数据源故障不白屏
-- **不造假**：取不到真实数据就显式降级或标注 DEMO，不拿模拟数据冒充行情
+- **不造假**：指数类页面取不到真实数据就显式降级并标注 DEMO；个股分析全程禁用模拟数据，取不到即显示「实时行情暂不可达」并支持重试
 
 ## 界面一览
 
@@ -40,7 +44,7 @@ flowchart LR
   D --> M["math/ 纯函数引擎<br/>无 UI 依赖"]
   M --> U["pages/ 18 个交互页面"]
   U --> L["浏览器 localStorage 缓存"]
-  T["tests/ 30 文件 · 447 用例"] -.-> M
+  T["tests/ 31 文件 · 461 用例"] -.-> M
 ```
 
 所有环节都在浏览器内完成，没有服务端、没有数据库、没有账号体系。下方「模块图解」收录全部 18 个模块的界面截图。
@@ -75,22 +79,25 @@ flowchart LR
 ## 快速开始
 
 ```bash
-npm install
+npm ci
 npm run dev        # 开发服务 http://localhost:5173（含本地代理）
 npm run serve      # 生产预览 http://localhost:4173（静态 dist + 本地代理，韩国数据推荐此模式）
-npm test           # 单元测试（vitest，447 用例，30 个测试文件）
+npm test           # 单元测试（vitest，461 用例，31 个测试文件）
 npm run typecheck  # tsc --noEmit
 npm run build      # 生产构建 → dist/
 ```
 
-## 数据源（三级降级）
+### 在线体验（GitHub Pages）
 
-1. **腾讯行情**（主）：`web.ifzq.gtimg.cn` 前复权日线
-2. **东方财富**（备）：`push2his.eastmoney.com` 日线 / 资金流 / 估值快照
-3. **本地缓存**：localStorage（7 天有效）
-4. **模拟数据**：带隐性市场状态切换的几何布朗运动（页面显著标注 DEMO）
+<https://nickilchen.github.io/MathQuant_Lab/> 由 [Deploy Pages 工作流](./.github/workflows/pages.yml) 在每次推送 `main` 后自动构建部署。
 
-任一环节失败自动降级，页面不白屏；顶栏实时显示当前数据源。
+> ⚠️ Pages 是**纯静态托管**，不提供本地运行时的 `/px/{host}` 服务端代理。腾讯、东财等返回 `Access-Control-Allow-Origin: *` 的接口可直连取到真实行情；Naver、Yahoo 等需要代理注入 Referer / UA 的源在在线版不可用。**完整五市场体验请按上面的命令本地运行**。
+
+## 降级链与「不造假」原则
+
+`主源 → 备用源（五源按标的自动分流）→ 本地缓存（7 天）→ 显式 DEMO`，任一环节失败自动降级、页面不白屏，顶栏实时显示当前数据源与缓存年龄；源覆盖、熔断与后台自愈详见上文「数据源与降级策略」。
+
+**个股分析是唯一例外**：`allowDemo=false` 全程禁用模拟数据。实时源与缓存都取不到时，页面显示「实时行情暂不可达」、列出已尝试的源并给出重试按钮，绝不用 GBM 冒充真实行情。
 
 ## 模型地图
 
@@ -101,6 +108,7 @@ npm run build      # 生产构建 → dist/
 | **机构持仓** | **机构类型占比 + 属性穿透** | **股东名称规则分类 + HHI 集中度 + 可解释评分** | **r_i = 持股/总股本；HHI = Σwᵢ²；Score = 50 + Σδ** |
 | **实时监控** | **消息面 + 个股异动定时盯盘（A/港/美/日/韩）** | **行情腾讯主 + 东财/新浪/Naver/Yahoo JP 备；快讯财联社主 + 新浪 7×24/东财快讯备；分频轮询 30s/60s/5min + 全局引擎 + 顶栏未读** | **告警 = 快讯档位 ≥ A ∨ \|涨跌幅\| 阈值穿越 ∨ 瞬时跳变 ≥ 阈值 ∨ 新公告；按 host 最小间隔/每分钟预算/失败指数退避防限流，休市 ×3、后台 ×4 降频** |
 | **波段 · 抄底** | **趋势回调/突破 + 恐慌超跌反弹（A/港/美/日/韩）** | **MA20/MA60/ADX/ATR/RSI + 20 日结构位；恐慌评分 + 该股历史同类样本胜率** | **入场 = MA20 或突破位；止损 = 结构位 − 1.5 ATR；目标 = 入场 + 2R；仓位 = 风险预算 ÷ 每股风险** |
+| **降波筑底** | **大涨 → 逐级下跌 → 波动/量能双收敛 → 低点抬高 → 放量突破（A/港/美/日/韩）** | **ATR%、布林带宽、已实现波动三项压缩比 + 20 日均量 + 唐奇安下轨 + 40 日回归斜率 + 均线粘合 + ADX + OBV 底背离，六维 100 分** | **波动压缩比 = 当前 ÷ 下跌段峰值；试探仓 = 本金 × 10%；止损 = 底部低点 − 0.5 ATR（破底即走）；确认档需放量 ≥1.5× 站上 20 日颈线，目标 = 颈线 / 箱体量度 / 0.618 反弹位** |
 | **价值估值评断** | **季度财报驱动的相对估值（A/港/美/日/韩）** | **TTM EPS + 该股自身历史 PE/PB 分位（25/50/75）→ 悲观/合理/乐观三档具体股价** | **合理价 = TTM EPS × PE 中位数；差额 = 合理价 − 现价；A 股 TTM 用累计差分，海外用最近 4 季相加** |
 | **做 T 分析** | **日内回转决策（正 T / 倒 T / 观望 / 不适合）** | **腾讯分时 VWAP + 近 20 日振幅 + 真实交易成本盈亏平衡；两腿价格区间与数量** | **成本 = 2·max(额·佣金, 5 元) + 额·印花税 + 2·额·过户费；剩余空间 = 均振幅 − 已走振幅** |
 | **个股分析** | **趋势法 + 技术面体检 + 基本面 + 消息面标签** | **均线/ADX/唐奇安/线性回归/量价；MACD/RSI/KDJ/BOLL/ATR/OBV；东财估值与财务快照；公告关键词 + SEC form + 港股繁简 + 日韩词表** | **趋势 score = 50 + 50·Σwᵢsᵢ；技术面 = 50 + Σ指标加减分；importance = 标签权重 + 时效 + 金额** |
@@ -182,6 +190,10 @@ A 股 T+1 下只做合法回转：正 T 低吸后卖等量老仓、倒 T 高抛�
 ![📈 波段 · 抄底短线](./docs/screens/modules/05-swing.jpg)
 
 波段识别趋势回调 / 箱体突破 / 突破延伸，给入场、止损、目标与仓位；抄底先给恐慌程度打分，再回答「同样跌幅后 1/3/5 天的涨跌概率」。覆盖五个市场并按交易制度调整。
+
+**第三个 tab「降波筑底」**识别的是以月计的中期底部构造：主升前置（60 日涨幅 ≥30%、距顶 20~180 日）→ 自高点回撤 ≥20% → 波动与量能同时收敛到下跌段峰值的 60% 以下 → 低点不再下移、均线粘合走平、ADX 力竭 → 放量站上 20 日颈线。六维打分 100 分，输出五档信号：下跌未完 / 降波中·观察 / 筑底中·小仓试探 / 筑底确认·买入 / 筑底失败·离场。
+
+核心规则是 **波动收敛 ≠ 见底**：下跌中继平台同样会缩量横盘，所以只收敛不突破一律停在观察档，只给试探仓；试探仓默认 10%，止损为底部低点 − 0.5 ATR，**破底即走**，加仓的唯一条件是放量站上颈线后才升至 30%。全部指标因果（峰值基准不含最新窗口、突破量比用昨日均量），至少需 120 根日 K，建议 250 根以上。
 
 </details>
 
@@ -507,7 +519,7 @@ src/
 ├─ pages/       # 18 个交互页面：总览/策略/个股/估值/情绪/监控/波段/做T/六大模型…
 server.mjs      # 生产服务器（静态托管 dist/ + Naver 代理）：npm run serve
 └─ styles.css   # 亮色主题设计系统
-tests/          # 30 个测试文件，447 用例
+tests/          # 31 个测试文件，461 用例
 docs/           # 功能文档 + README 配图（screens/ 主视觉、screens/modules/ 18 模块图）
 tmp/            # 冒烟测试脚本与截图（gitignored）
 ```
@@ -519,9 +531,9 @@ tmp/            # 冒烟测试脚本与截图（gitignored）
 - 回测成本模型：双边佣金 + 卖出印花税（顶栏可调，默认万 2.5 + 千 1）
 - 机器学习按 70/30 **时序**划分训练/测试，回测仅在样本外区间
 
-## 开源许可
+## 开源许可与社区
 
-本项目采用 [MIT License](./LICENSE)。
+本项目采用 [MIT License](./LICENSE)。贡献前请看 [CONTRIBUTING.md](./CONTRIBUTING.md)，版本记录见 [CHANGELOG.md](./CHANGELOG.md)，安全政策见 [SECURITY.md](./SECURITY.md)。
 
 ## 隐私与数据安全
 
