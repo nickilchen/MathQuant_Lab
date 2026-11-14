@@ -91,7 +91,13 @@ npm run build      # 生产构建 → dist/
 
 <https://nickilchen.github.io/MathQuant_Lab/> 由 [Deploy Pages 工作流](./.github/workflows/pages.yml) 在每次推送 `main` 后自动构建部署。
 
-> ⚠️ Pages 是**纯静态托管**，不提供本地运行时的 `/px/{host}` 服务端代理。腾讯、东财等返回 `Access-Control-Allow-Origin: *` 的接口可直连取到真实行情；Naver、Yahoo 等需要代理注入 Referer / UA 的源在在线版不可用。**完整五市场体验请按上面的命令本地运行**。
+> ⚠️ Pages 是**纯静态托管**，不提供本地运行时的 `/px/{host}` 服务端代理。2026-11-14 线上实测的可用范围：
+>
+> - ✅ **可用**：A 股 / 港股指数与 ETF 的日 K（腾讯、东财接口返回 `Access-Control-Allow-Origin: *`），总览、六类模型、策略引擎、波段与降波筑底等页面能取到真实行情。
+> - ❌ **不可用**：**个股搜索与个股分析**（东财 suggest、新浪美股 / A 股接口均无 CORS 头，Yahoo 常返回 429）、Naver 韩股、公告与资讯类接口。个股页会按设计显示「实时行情暂不可达」、列出已尝试的源并提供重试，**绝不用模拟数据冒充真实行情**。
+> - 控制台出现若干 `/px/...` 404，是静态环境下备用源的降级尝试，不是资源缺失或应用异常（`pageerror` 为 0）。
+>
+> **完整五市场体验请按上面的命令本地运行**：`npm run serve` 会启动带代理的本地服务。
 
 ## 降级链与「不造假」原则
 
