@@ -70,6 +70,7 @@ flowchart LR
 | 环节 | 说明 |
 |---|---|
 | 本地代理 | `npm run dev` 走 Vite 代理；`npm run serve` 走 `server.mjs` 的 `/px/{host}/{path}` 通用代理（host 白名单，非白名单 403）。新浪/Yahoo 无 CORS 头，浏览器环境统一经此代理 |
+| AI 同源代理 | dev 与 `npm run serve` 均提供 `/ai/{path}` → `AI_PROXY_TARGET`（默认 `https://api.deepseek.com`）的转发，透传 POST body 与 `Authorization`、支持 SSE 流式；在「AI 设置」里把 API 地址填为本服务的 `/ai` 同源地址即可绕开供应商 CORS |
 | 代理环境 | `server.mjs` 自动读取 `HTTP_PROXY/HTTPS_PROXY`（企业内网/网关场景），无代理时为空操作 |
 | 本地缓存 | localStorage，7 天有效；徽标显示**缓存年龄**（如「缓存·3小时前」） |
 | **后台自愈** | 走缓存/模拟数据时立即返回，同时后台 15s/60s/180s 尝试实时源，成功后静默更新并自动翻转徽标 |

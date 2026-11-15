@@ -4,7 +4,7 @@
 
 ## 环境要求
 
-- Node.js ≥ 20（CI 使用 22）
+- Node.js ≥ 20.18.1（CI 使用 22）。`server.mjs` 依赖 `undici@7`（其 `engines` 下限为 `>=20.18.1`）；若低于此版本，`npm run serve` 会在模块加载期直接失败。历史上曾用 `undici@8`（要求 Node ≥22.19.0，用到 `zlib.createZstdDecompress`），与 `>=20` 的声明不符，已修正。
 - npm（仓库自带 `package-lock.json`，请用它安装以保证版本一致）
 
 ```bash

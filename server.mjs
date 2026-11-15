@@ -1,10 +1,12 @@
 /**
- * 生产用本地服务器：静态托管 dist/ + 转发韩国数据（Naver 无 CORS 头）。
+ * 生产用本地服务器：静态托管 dist/ + 转发韩国数据（Naver 无 CORS 头）
+ *   + /px/{host}/{path} 通用行情代理 + /ai 同源 AI 代理（与 vite.config.ts 对齐）。
  * 用法：npm run build && npm run serve  → http://localhost:4173
  */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
+import { Readable } from 'node:stream';
 // Node 原生 fetch 不读取 HTTP_PROXY/HTTPS_PROXY 环境变量；
 // 企业内网 / 代理网关环境下需要显式设置全局 ProxyAgent（无代理环境时为无副作用空操作）
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
@@ -20,6 +22,12 @@ const PORT = Number(process.env.PORT ?? 4173);
 const DIST = decodeURIComponent(new URL('./dist/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const PROXY_PREFIX = '/naver-api';
 const NAVER = 'https://api.finance.naver.com';
+
+/** AI 同源代理：/ai/{path} → AI_TARGET/{path}，与 vite.config.ts 的 /ai 对齐。
+ *  target 固定（环境变量可覆盖），不接受客户端指定 host，避免成为开放代理；
+ *  AI_PROXY_TARGET 末尾斜杠统一去掉，拼接路径时不会出现双斜杠。 */
+const AI_PREFIX = '/ai';
+const AI_TARGET = (process.env.AI_PROXY_TARGET || 'https://api.deepseek.com').replace(/\/+$/, '');
 
 /** 通用代理白名单：/px/{host}/{path} → https://{host}/{path} */
 const PX_PREFIX = '/px/';
@@ -152,6 +160,60 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // ---- AI 同源代理（与 vite.config.ts 的 /ai 对齐）----
+  // 与只读的 /px 不同：/ai 是 POST + Bearer Key + JSON body，且上游可能返回
+  // SSE 流式响应，因此透传方法与头、流式回写而不整体缓冲。
+  if (url.pathname === AI_PREFIX || url.pathname.startsWith(AI_PREFIX + '/')) {
+    // 预检：同源请求一般不需要，但自定义 Authorization 场景下浏览器可能发 OPTIONS
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': req.headers['access-control-request-headers'] || 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '600'
+      });
+      res.end();
+      return;
+    }
+    try {
+      const rest = url.pathname.slice(AI_PREFIX.length); // '' 或 '/chat/completions'
+      const target = `${AI_TARGET}${rest || '/'}${url.search}`;
+      // 收集请求体（POST /chat/completions 的 JSON）
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      const body = chunks.length ? Buffer.concat(chunks) : undefined;
+      const headers = {
+        'Content-Type': req.headers['content-type'] || 'application/json'
+      };
+      if (req.headers.authorization) headers.Authorization = req.headers.authorization;
+      if (req.headers.accept) headers.Accept = req.headers.accept;
+      const upstream = await fetch(target, {
+        method: req.method,
+        headers,
+        body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body
+      });
+      res.writeHead(upstream.status, {
+        'Content-Type': upstream.headers.get('content-type') ?? 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store'
+      });
+      // 流式转发（兼容 stream:true 的 SSE）；fromWeb 需要 ReadableStream，Node>=20 支持
+      if (upstream.body) {
+        Readable.fromWeb(upstream.body).pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (e) {
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(`ai proxy error: ${String(e)}`);
+      } else {
+        res.destroy();
+      }
+    }
+    return;
+  }
+
   // ---- 静态文件（SPA 回退 index.html） ----
   let filePath = normalize(join(DIST, url.pathname));
   if (!filePath.startsWith(normalize(DIST))) {
@@ -180,5 +242,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`MathQuant Lab → http://localhost:${PORT}  (dist/ + Naver 代理)`);
+  console.log(`MathQuant Lab → http://localhost:${PORT}  (dist/ + /px 行情代理 + /ai AI 代理)`);
 });
