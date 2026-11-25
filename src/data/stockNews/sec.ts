@@ -56,7 +56,8 @@ function parseCikBlob(blob: string): Map<string, string> {
   return m;
 }
 
-async function loadCikMap(): Promise<Map<string, string>> {
+/** 导出给估值模块复用（同一份 24h 缓存，避免重复拉 800KB 代码表） */
+export async function loadCikMap(): Promise<Map<string, string>> {
   if (cikMap) return cikMap;
 
   try {

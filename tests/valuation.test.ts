@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_VALUATION_CONFIG, analyzeValuation, percentile, priceAfterNotice, statsOf, ttmOf } from '../src/math/valuation';
 import { canFetchValuation, valuationCode, valuationMarket, valuationMeta } from '../src/data/valuation';
 import { parseSaDate, parseSaNumber, parseSaSeries } from '../src/data/valuation/sa';
+import { parseSecQuarterly } from '../src/data/valuation/sec';
+import { mapHkRow } from '../src/data/valuation/hk';
+import { mapNaverFinance } from '../src/data/valuation/kr';
 import type { QuarterReport } from '../src/data/valuation';
 import type { Bar } from '../src/data/types';
 
@@ -366,5 +369,118 @@ describe('StockAnalysis 财报页解析', () => {
   it('没有目标行时返回 null，不抛异常', () => {
     expect(parseSaSeries(SA_HTML, /^revenue$/i)).toBeNull();
     expect(parseSaSeries('<table><tbody><tr><td>x</td></tr></tbody></table>', /^eps/i)).toBeNull();
+  });
+});
+
+/* ============ 新数据源解析器（SEC / 港股 / 韩股）============ */
+
+describe('SEC 美股单季 EPS 识别', () => {
+  const fact = (start: string, end: string, val: number, filed: string) => ({ start, end, val, filed, form: '10-Q' });
+  const facts = [
+    // 累计（Q3 前三季合计）+ 单季（当季）——同一 end 两条，应取单季
+    fact('2025-09-28', '2026-06-27', 6.88, '2026-07-31'),
+    fact('2026-03-29', '2026-06-27', 2.02, '2026-07-31'),
+    // 修订申报：同 end 更晚 filed 应覆盖
+    fact('2025-12-28', '2026-03-28', 1.98, '2026-05-01'),
+    fact('2025-12-28', '2026-03-28', 2.01, '2026-05-05'),
+    // 年报（跨度 > 120 天）应排除
+    fact('2025-09-28', '2026-09-26', 8.98, '2026-11-03'),
+    // 缺 start 应排除
+    { end: '2026-01-01', val: 1, filed: '2026-02-01', form: '10-Q' }
+  ];
+
+  it('只保留单季，累计/年报/缺 start 都被排除', () => {
+    const r = parseSecQuarterly(facts as never);
+    expect(r.map((x) => x.end)).toEqual(['2026-03-28', '2026-06-27']);
+  });
+
+  it('同一 end 的修订申报取 filed 最新', () => {
+    const r = parseSecQuarterly(facts as never);
+    expect(r.find((x) => x.end === '2026-03-28')?.val).toBe(2.01);
+  });
+
+  it('结果按期末日期升序', () => {
+    const r = parseSecQuarterly(facts as never);
+    expect(r[0].end < r[1].end).toBe(true);
+  });
+});
+
+describe('港股东财财报映射', () => {
+  const row = {
+    STD_REPORT_DATE: '2026-09-30 00:00:00',
+    BASIC_EPS: 19.697,
+    BPS: 133.25,
+    EPS_TTM: 25.95,
+    PE_TTM: 11.36,
+    PB_TTM: 2.2,
+    ROE_AVG: 15.03,
+    HOLDER_PROFIT_YOY: 6.69,
+    OPERATE_INCOME_YOY: 9.18,
+    GROSS_PROFIT_RATIO: 56.79,
+    PER_NETCASH_OPERATE: 17.24
+  };
+
+  it('映射核心字段并标记公告日为估算', () => {
+    const r = mapHkRow(row)!;
+    expect(r.period).toBe('2026-09-30');
+    expect(r.bps).toBe(133.25);
+    expect(r.noticeEstimated).toBe(true);
+    expect(r.ttmEps).toBe(25.95); // 直接用东财 EPS_TTM
+    expect(r.peHint).toBe(11.36);
+    expect(r.pbHint).toBe(2.2);
+  });
+
+  it('季报公告日 = 报告期 + 60 天', () => {
+    const r = mapHkRow(row)!;
+    expect(r.noticeDate).toBe('2026-11-29');
+  });
+
+  it('年报公告日 = 报告期 + 100 天', () => {
+    const r = mapHkRow({ ...row, STD_REPORT_DATE: '2025-12-31 00:00:00' })!;
+    expect(r.noticeDate).toBe('2026-04-10');
+  });
+
+  it('无报告期返回 null', () => {
+    expect(mapHkRow({ BASIC_EPS: 1 })).toBeNull();
+  });
+});
+
+describe('韩股 Naver 年度财报映射', () => {
+  const resp = {
+    financeInfo: {
+      trTitleList: [
+        { key: '202312', title: '2023.12.' },
+        { key: '202412', title: '2024.12.' },
+        { key: '202512', title: '2025.12.' }
+      ],
+      rowList: [
+        { title: 'EPS', columns: { 202312: { value: '2,131' }, 202412: { value: '4,950' }, 202512: { value: '6,564' } } },
+        { title: 'BPS', columns: { 202312: { value: '52,002' }, 202412: { value: '57,981' }, 202512: { value: '63,997' } } },
+        { title: 'PER', columns: { 202312: { value: '36.84' }, 202412: { value: '10.75' }, 202512: { value: '18.27' } } },
+        { title: 'PBR', columns: { 202312: { value: '1.51' }, 202412: { value: '0.92' }, 202512: { value: '1.87' } } },
+        { title: 'ROE', columns: { 202312: { value: '4.15' }, 202412: { value: '9.03' }, 202512: { value: '10.85' } } }
+      ]
+    }
+  };
+
+  it('解析千分位 EPS / BPS 与 PE / PB 提示', () => {
+    const list = mapNaverFinance(resp as never);
+    expect(list).toHaveLength(3);
+    expect(list[0].period).toBe('2025-12-31'); // 最新在前
+    expect(list[0].epsCum).toBe(6564);
+    expect(list[0].bps).toBe(63997);
+    expect(list[0].peHint).toBe(18.27);
+    expect(list[0].pbHint).toBe(1.87);
+    expect(list[0].ttmEps).toBe(6564); // 年度 EPS 即 TTM
+  });
+
+  it('无 EPS 的期被跳过', () => {
+    const r = mapNaverFinance({
+      financeInfo: {
+        trTitleList: [{ key: '202512', title: '2025.12.' }],
+        rowList: [{ title: 'BPS', columns: { 202512: { value: '100' } } }]
+      }
+    } as never);
+    expect(r).toHaveLength(0);
   });
 });

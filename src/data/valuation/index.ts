@@ -1,11 +1,15 @@
 /**
- * 季度财报路由：A 股走东财，港股 / 美股 / 日股 / 韩股走 StockAnalysis。
+ * 季度财报路由：A 股走东财，美股走 SEC EDGAR，港股走东财港股 F10，韩股走 Naver。
+ * 日股原走 StockAnalysis——该站 2026-11 起整站 Cloudflare 403，且无可靠免 key 替代源，
+ * 因此明确不可用（给提示，绝不用模拟数据冒充）。
  *
  * 统一入口保持 `fetchQuarterReports(code)` 不变，页面不需要知道数据来自哪。
  * 缓存 6 小时（财报按季更新），按 code 存，避免同一标的重复请求。
  */
 import { cnCode, fetchCnReports } from './cn';
-import { fetchSaReports } from './sa';
+import { fetchHkReports } from './hk';
+import { fetchSecReports } from './sec';
+import { fetchKrReports } from './kr';
 import type { QuarterReport, ValuationMarket, ValuationMarketMeta } from './types';
 
 export type { QuarterReport, ValuationMarket, ValuationMarketMeta };
@@ -58,35 +62,35 @@ const META: Record<ValuationMarket, Omit<ValuationMarketMeta, 'market'>> = {
   },
   HK: {
     label: '港股',
-    source: 'StockAnalysis 季度财报',
+    source: '东财港股 F10（RPT_HKF10_FN_MAININDICATOR）',
     currency: '港元',
     currencySymbol: 'HK$',
     noticeEstimated: true,
-    note: '单季 EPS 与每股净资产；港股无免费公告日字段，按披露期限保守估算（季报 +60 天、年报 +100 天）。'
+    note: '累计 EPS / BPS / TTM / PE / PB（东财主要指标）；东财无公告日字段，按披露期限保守估算（季报 +60 天、年报 +100 天）。'
   },
   US: {
     label: '美股',
-    source: 'StockAnalysis 季度财报',
+    source: 'SEC EDGAR companyconcept（官方 XBRL）',
     currency: '美元',
     currencySymbol: '$',
-    noticeEstimated: true,
-    note: '单季 EPS 与每股净资产；公告日按披露期限保守估算（季报 +60 天、年报 +100 天）。'
+    noticeEstimated: false,
+    note: '稀释单季 EPS + 归母权益/股本得 BPS，TTM 为最近 4 单季和；公告日为 SEC 真实 filed 日期。少数用自定义 XBRL tag 的标的（如 BRK.B）暂不可得。'
   },
   JP: {
     label: '日股',
-    source: 'StockAnalysis 季度财报',
+    source: '原 StockAnalysis（已失效）',
     currency: '日元',
     currencySymbol: '¥',
     noticeEstimated: true,
-    note: '单季 EPS 与每股净资产（日元）；公告日按披露期限保守估算。日股财年多为 3 月，Q4 即财年末。'
+    note: '日股财报数据源暂不可用（原站 Cloudflare 403，暂无可靠免 key 替代），估值页会明确提示；本站不用模拟数据冒充。'
   },
   KR: {
     label: '韩股',
-    source: 'StockAnalysis 季度财报',
+    source: 'Naver Finance（年度财务）',
     currency: '韩元',
     currencySymbol: '₩',
     noticeEstimated: true,
-    note: '单季 EPS 与每股净资产（韩元）；公告日按披露期限保守估算。'
+    note: '年度 EPS / BPS / PER / PBR / ROE（Naver），仅约 4 期样本、分位较粗；公告日按年报期限估算（+100 天）。'
   }
 };
 
@@ -116,7 +120,23 @@ export async function fetchQuarterReports(code: string, size = 60): Promise<Quar
     /* 忽略缓存损坏 */
   }
 
-  const list = market === 'CN' ? await fetchCnReports(code, size) : await fetchSaReports(market, code);
+  let list: QuarterReport[];
+  switch (market) {
+    case 'CN':
+      list = await fetchCnReports(code, size);
+      break;
+    case 'US':
+      list = await fetchSecReports(code);
+      break;
+    case 'HK':
+      list = await fetchHkReports(code, size);
+      break;
+    case 'KR':
+      list = await fetchKrReports(code);
+      break;
+    case 'JP':
+      throw new Error('日股财报数据源暂不可用（原 StockAnalysis 已失效），本站不用模拟数据冒充');
+  }
 
   try {
     localStorage.setItem(key, JSON.stringify({ ts: Date.now(), list }));

@@ -106,11 +106,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           secid: hit.secid ?? '',
           kind: 'stock',
           market: hit.market,
-          sina: hit.sina,
           naver: hit.naver,
           // 深链（?code=jp7203）进来的日股没有 yahoo 字段，按代码补上，
           // 否则日股 K 线无源可用（Yahoo Finance 被墙、东财不服务日股）
           yahoo: hit.yahoo ?? (hit.market === 'JP' ? `${hit.code.replace(/^jp/i, '')}.T` : undefined),
+          // 深链/热门（?code=usAAPL）进来的美股没有 sina 字段，按代码补上（usAAPL → AAPL）。
+          // 新浪 US_MinKService.getDailyK 靠 sym.sina 取数，缺它则美股 K 线无源、估值不可用。
+          sina: hit.sina ?? (hit.market === 'US' ? hit.code.replace(/^us/i, '') : undefined),
           base: 100
         }
       };
