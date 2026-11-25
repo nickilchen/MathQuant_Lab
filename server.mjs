@@ -147,7 +147,11 @@ const server = createServer(async (req, res) => {
           Referer: REFERER[host] ?? `https://${host}/`
         }
       });
-      const body = await upstream.text();
+      // 必须按字节透传：部分上游（新浪行业页 newSinaHy.php 等）是 GBK 编码，
+      // 若用 upstream.text() 会先按 UTF-8 解码成 U+FFFD，字节不可逆损坏；
+      // 前端 getGbk() 用 TextDecoder('gbk') 自行解码，这里只负责原样搬运字节。
+      // undici 已自动处理 gzip/br 解压，arrayBuffer() 拿到的是解压后的原始字节。
+      const body = Buffer.from(await upstream.arrayBuffer());
       res.writeHead(upstream.status, {
         'Content-Type': upstream.headers.get('content-type') ?? 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*'
