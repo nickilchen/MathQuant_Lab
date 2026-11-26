@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import BacktestPanel from '../components/BacktestPanel';
 import { ControlBar, CtrlGroup, EmptyTip, Loading, MathPanel, MetricGrid, Panel, Slider, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, barOption, lineOption } from '../components/chartOptions';
 import { useApp, useKline } from '../hooks/AppContext';
 import { runVolModel } from '../pipelines';
@@ -131,6 +132,23 @@ export default function VolPage() {
             α+β 越接近 1，波动率冲击的衰减越慢（波动聚集效应越强）。A 股指数典型估计 α≈0.08、β≈0.88。
           </p>
         </MathPanel>
+      </Panel>
+
+      <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页模型指标交给 AI 解读，只读不改任何设置">
+        <AiAnalyze
+          module="波动率模型 · GARCH"
+          note="GARCH 波动率为条件预测；IV−HV 价差在本站用 GARCH 预测−已实现波动代理。"
+          facts={[
+            { label: '波动状态', value: run.regime === 'high' ? '波动率上行' : run.regime === 'low' ? '波动率回落' : '中性' },
+            { label: 'α（ARCH 项）', value: garch.alpha.toFixed(4) },
+            { label: 'β（GARCH 项）', value: garch.beta.toFixed(4) },
+            { label: '一步预测波动（年化）', value: (garch.forecast * 100).toFixed(2) + '%' },
+            { label: '当前目标仓位', value: (positions[positions.length - 1] * 100).toFixed(1) + '%' },
+            { label: '策略总收益', value: (bt.metrics.totalReturn * 100).toFixed(2) + '%' },
+            { label: '夏普', value: bt.metrics.sharpe.toFixed(2) },
+            { label: '最大回撤', value: (bt.metrics.maxDD * 100).toFixed(2) + '%' }
+          ]}
+        />
       </Panel>
     </div>
   );

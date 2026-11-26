@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import BacktestPanel from '../components/BacktestPanel';
 import { ControlBar, CtrlGroup, EmptyTip, Loading, MathPanel, MetricGrid, Panel, Slider } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, gaugeOption, lineOption, radarOption } from '../components/chartOptions';
 import { useApp, useKline } from '../hooks/AppContext';
 import { BOND_ETF, bondRefFor, getSymbol } from '../data/symbols';
@@ -186,6 +187,22 @@ z 分数模式:  vote = dir · tanh(z / 1.5),  z = (当前值 − 均值) / 标�
             tanh 压缩保证极端 z 分数不会让投票越界。所有因子仅用截至当日的数据计算，<b>不存在未来函数</b>。
           </p>
         </MathPanel>
+      </Panel>
+
+      <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页模型指标交给 AI 解读，只读不改任何设置">
+        <AiAnalyze
+          module="多维度因子投票择时"
+          note="信号 S 由估值/情绪/资金/技术四维因子投票加权合成，取值 [-1,+1]。"
+          facts={[
+            { label: '因子数量', value: String(report.values.length) },
+            { label: '综合信号 S', value: signal.toFixed(3) },
+            { label: '各维度得分', value: report.dims.map((d) => d.dim + ' ' + d.score.toFixed(3)).join('，') },
+            { label: '策略总收益', value: (bt.metrics.totalReturn * 100).toFixed(2) + '%' },
+            { label: '夏普', value: bt.metrics.sharpe.toFixed(2) },
+            { label: '最大回撤', value: (bt.metrics.maxDD * 100).toFixed(2) + '%' },
+            { label: '胜率', value: (bt.metrics.winRate * 100).toFixed(2) + '%' }
+          ]}
+        />
       </Panel>
     </div>
   );

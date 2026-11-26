@@ -13,6 +13,7 @@ import {
   fmtPct,
   fmtSigned
 } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, gaugeOption, lineOption } from '../components/chartOptions';
 import { useApp, useKline, useKlines } from '../hooks/AppContext';
 import { BOND_ETF, MARKET_LABEL, RP_DEFAULT, SCAN_DEFAULT, bondRefFor, getSymbol } from '../data/symbols';
@@ -366,6 +367,23 @@ export default function StrategyPage() {
           </div>
         </Panel>
       )}
+
+      <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页策略信号交给 AI 解读，只读不改任何设置">
+        <AiAnalyze
+          module="策略信号 · 四模型合成"
+          note="策略为规则驱动、只做多；综合为负时空仓观望，仓位已含风险档位上限。"
+          facts={[
+            { label: '综合信号', value: s.composite.toFixed(3) },
+            { label: '建议仓位 / 档位', value: (s.targetPosition * 100).toFixed(0) + '%（' + s.bucket + '）' },
+            { label: '当前状态', value: s.state.label + '（概率 ' + (s.state.prob * 100).toFixed(1) + '%）' },
+            { label: 'HMM / 因子 / 波动率 / MLP 观点', value: [s.views.hmm, s.views.factor, s.views.vol, s.views.ml ?? 0].map((v) => v.toFixed(2)).join(' / ') },
+            { label: '近20日收益 / 波动状态', value: (s.rets20 * 100).toFixed(2) + '% / ' + s.volRegime },
+            ...s.dims.map((d) => ({ label: '维度·' + d.dim, value: d.score.toFixed(3) })),
+            { label: '当前动作', value: s.plan.current },
+            { label: '止损 / 目标1 / 目标2', value: s.plan.stopLoss.toFixed(2) + ' / ' + s.plan.takeProfit1.toFixed(2) + ' / ' + s.plan.takeProfit2.toFixed(2) }
+          ]}
+        />
+      </Panel>
 
       <Panel title="📐 策略规则" icon="">
         <MathPanel>

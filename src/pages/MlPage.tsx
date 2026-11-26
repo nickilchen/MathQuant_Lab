@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import BacktestPanel from '../components/BacktestPanel';
 import { ControlBar, CtrlGroup, EmptyTip, Loading, MathPanel, MetricGrid, Panel, Select, Slider, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, barOption, lineOption } from '../components/chartOptions';
 import { useApp, useKline } from '../hooks/AppContext';
 import { runMlModel, type MlModelType } from '../pipelines';
@@ -153,6 +154,25 @@ export default function MlPage() {
             金融信噪比极低，测试准确率 52–55% 已具备实战意义，但仍需结合成本与容量评估。
           </p>
         </MathPanel>
+      </Panel>
+
+      <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页模型指标交给 AI 解读，只读不改任何设置">
+        <AiAnalyze
+          module="机器学习方向预测"
+          note="按 70/30 时序切分，回测仅在样本外区间；基准上涨率用于判断模型是否跑赢「永远猜涨」。"
+          facts={[
+            { label: '模型', value: run.modelType === 'mlp' ? 'MLP 神经网络' : '逻辑回归' },
+            { label: '训练 / 测试样本', value: run.trainSize + ' / ' + run.testSize },
+            { label: '训练集准确率', value: (run.accTrain * 100).toFixed(2) + '%' },
+            { label: '测试集准确率', value: (run.accTest * 100).toFixed(2) + '%' },
+            { label: '基准上涨率', value: (run.baseRate * 100).toFixed(2) + '%' },
+            { label: 'AUC', value: run.auc.toFixed(3) },
+            { label: '最新预测概率', value: (run.lastProba * 100).toFixed(1) + '%' },
+            { label: '策略总收益', value: (run.bt.metrics.totalReturn * 100).toFixed(2) + '%' },
+            { label: '夏普', value: run.bt.metrics.sharpe.toFixed(2) },
+            { label: '最大回撤', value: (run.bt.metrics.maxDD * 100).toFixed(2) + '%' }
+          ]}
+        />
       </Panel>
     </div>
   );

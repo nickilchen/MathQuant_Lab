@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import EChart from '../components/EChart';
 import { ControlBar, CtrlGroup, EmptyTip, Loading, MathPanel, Panel, SignalBadge, SourcePill, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, equityOption, gaugeOption } from '../components/chartOptions';
 import { useApp, useKline } from '../hooks/AppContext';
 import { BOND_ETF, MARKET_LABEL, bondRefFor, getSymbol } from '../data/symbols';
@@ -225,6 +226,25 @@ export default function Overview() {
             没有任何单一模型能持续盈利，组合使用 + 严格成本控制才是关键。
           </p>
         </MathPanel>
+      </Panel>
+
+      <Panel title="🤖 AI 指标解读" icon="🤖" desc="把四模型综合观点交给 AI 解读，只读不改任何设置">
+        <AiAnalyze
+          module="市场体检总览 · 四模型合成"
+          symbol={getSymbol(settings.benchmark)?.name}
+          note="综合观点为 HMM / 因子投票 / 波动率 / MLP 四路观点等权平均，各路口径不同，互相印证更可靠。"
+          facts={[
+            { label: '基准', value: getSymbol(settings.benchmark)?.name ?? settings.benchmark },
+            { label: '综合信号', value: composite.toFixed(3) + '（-1 看空 ~ +1 看多）' },
+            { label: 'HMM 观点', value: hmmView.toFixed(3) + ' · 最可能状态 ' + hmm.output.labels[hmm.currentProbs.indexOf(Math.max(...hmm.currentProbs))] },
+            { label: '因子投票信号', value: facView.toFixed(3) },
+            { label: '波动率观点', value: volView.toFixed(3) + ' · 状态 ' + vol.regime },
+            { label: 'MLP 观点', value: mlView.toFixed(3) + ' · 上涨概率 ' + (ml.lastProba * 100).toFixed(1) + '%' },
+            { label: 'HMM 回测夏普 / 回撤', value: hmm.bt.metrics.sharpe.toFixed(2) + ' / ' + (hmm.bt.metrics.maxDD * 100).toFixed(2) + '%' },
+            { label: '因子回测夏普 / 回撤', value: fac.bt.metrics.sharpe.toFixed(2) + ' / ' + (fac.bt.metrics.maxDD * 100).toFixed(2) + '%' },
+            { label: 'MLP 测试准确率 / AUC', value: (ml.accTest * 100).toFixed(2) + '% / ' + ml.auc.toFixed(3) }
+          ]}
+        />
       </Panel>
     </div>
   );

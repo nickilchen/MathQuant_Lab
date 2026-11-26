@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import { ControlBar, CtrlGroup, ChipMulti, EmptyTip, Loading, MathPanel, MetricGrid, Panel, Select, Slider, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, barOption, equityOption, pieOption } from '../components/chartOptions';
 import { useApp, useKlines } from '../hooks/AppContext';
 import { RP_DEFAULT, SYMBOLS } from '../data/symbols';
@@ -197,6 +198,24 @@ HRP（层次风险平价）:
                 对相关性突变更稳健。两者都不预测方向，只分配风险预算。
               </p>
             </MathPanel>
+          </Panel>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页模型指标交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="风险平价组合"
+              note="四种方法：ERC 等风险贡献、HRP 层次风险平价、逆波动、等权；均不预测方向，只分配风险预算。"
+              facts={[
+                { label: '资产数', value: String(run.names.length) },
+                { label: '资产列表', value: run.names.join('、') },
+                { label: 'ERC 组合年化波动', value: (run.portVols.erc * 100).toFixed(2) + '%' },
+                { label: 'HRP 组合年化波动', value: (run.portVols.hrp * 100).toFixed(2) + '%' },
+                { label: 'ERC 年化收益', value: (run.metrics.erc.cagr * 100).toFixed(2) + '%' },
+                { label: 'ERC 夏普', value: run.metrics.erc.sharpe.toFixed(2) },
+                { label: 'ERC 最大回撤', value: (run.metrics.erc.maxDD * 100).toFixed(2) + '%' },
+                { label: 'HRP 夏普', value: run.metrics.hrp.sharpe.toFixed(2) },
+                { label: '最高单资产波动', value: (Math.max(...run.vols) * 100).toFixed(2) + '%' }
+              ]}
+            />
           </Panel>
         </>
       )}

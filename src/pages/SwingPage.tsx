@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import EChart from '../components/EChart';
 import { C, lineOption } from '../components/chartOptions';
 import { CtrlGroup, EmptyTip, Loading, MetricGrid, Panel } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { useApp } from '../hooks/AppContext';
 import { searchStocks, type StockHit } from '../data/search';
 import { getSymbol, MARKET_LABEL, type Market } from '../data/symbols';
@@ -730,6 +731,51 @@ export default function SwingPage() {
             </Panel>
           )}
         </>
+      )}
+
+      {(swing || panic || bottoming) && (
+        <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页当前模式的指标交给 AI 解读，只读不改任何设置">
+          <AiAnalyze
+            module={tab === 'swing' ? '波段交易' : tab === 'panic' ? '恐慌抄底' : '降波筑底'}
+            symbol={picked?.name}
+            note={tab === 'swing' ? '波段评分是「当前位置值不值得进」，不是预测涨幅。' : tab === 'panic' ? '胜率来自该股自身历史同类样本，样本少时不可靠。' : '只收敛不突破停在观察档；试探仓小、破底即走。'}
+            facts={
+              tab === 'swing' && swing
+                ? [
+                    { label: '形态 / 判定', value: swing.setup + ' / ' + swing.verdict },
+                    { label: '评分', value: swing.score.toFixed(0) + ' / 100' },
+                    { label: '收盘价', value: swing.close.toFixed(2) + ' ' + cur },
+                    { label: 'ATR 占价', value: swing.atrPct.toFixed(2) + '%' },
+                    { label: '量比', value: swing.volRatio.toFixed(2) },
+                    { label: 'RSI / ADX', value: swing.rsi.toFixed(1) + ' / ' + swing.adx.toFixed(1) },
+                    ...(swing.plan ? [
+                      { label: '入场区间', value: swing.plan.entryLow.toFixed(2) + ' ~ ' + swing.plan.entryHigh.toFixed(2) },
+                      { label: '止损 / 目标1', value: swing.plan.stop.toFixed(2) + ' / ' + swing.plan.target1.toFixed(2) },
+                      { label: '风险回报比', value: swing.plan.rr.toFixed(1) }
+                    ] : [])
+                  ]
+                : tab === 'panic' && panic
+                  ? [
+                      { label: '判定', value: panic.triggered ? '触发抄底' : '不触发' },
+                      { label: '恐慌等级 / 评分', value: panic.level + ' / ' + panic.score },
+                      { label: '今日跌幅', value: panic.drop.toFixed(2) + '%' },
+                      { label: '量比', value: panic.volRatio.toFixed(2) },
+                      { label: 'RSI', value: panic.rsi.toFixed(1) },
+                      ...panic.stats.map((x) => ({ label: x.horizon + '日胜率', value: x.samples ? x.winRate.toFixed(0) + '%（样本 ' + x.samples + '）' : '无样本' }))
+                    ]
+                  : bottoming
+                    ? [
+                        { label: '信号', value: bottoming.signal },
+                        { label: '筑底评分', value: bottoming.score.toFixed(0) + ' / 100' },
+                        { label: '收盘价', value: bottoming.close.toFixed(2) + ' ' + cur },
+                        { label: '波动压缩 / 量能压缩', value: (bottoming.compress * 100).toFixed(0) + '% / ' + (bottoming.volCompress * 100).toFixed(0) + '%' },
+                        { label: '距顶天数 / 回撤', value: bottoming.barsFromHigh + ' 日 / ' + (bottoming.drawdown * 100).toFixed(2) + '%' },
+                        ...bottoming.factors.map((f) => ({ label: f.name, value: f.score + '/' + f.max + ' · ' + f.value }))
+                      ]
+                    : []
+            }
+          />
+        </Panel>
       )}
 
       <Panel title="⚠️ 使用边界" icon="⚠️">

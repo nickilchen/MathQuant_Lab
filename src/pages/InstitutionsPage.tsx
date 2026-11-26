@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import EChart from '../components/EChart';
 import { CtrlGroup, EmptyTip, Loading, MathPanel, MetricGrid, Panel, Select, SourcePill, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import {
   C,
   barOption,
@@ -1846,6 +1847,22 @@ export default function InstitutionsPage() {
                 天，存在滞后。本页不构成投资建议。
               </p>
             </div>
+          </Panel>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页机构持仓指标交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="机构持仓分析"
+              note="机构持仓是事实数据；穿透依赖股东名称规则，明细仅覆盖已披露主体，不等于全量持仓。"
+              facts={[
+                { label: '机构持股占比', value: view.instRatio.toFixed(2) + '%' + (view.chgPp != null ? '（环比 ' + view.chgPp.toFixed(2) + 'pp）' : '') },
+                { label: '机构家数 / 产业资本占比', value: view.instCount + ' 家 / ' + view.industrialRatio.toFixed(2) + '%' },
+                { label: '股东户数', value: view.holders.toLocaleString() + (view.holdersChg != null ? '（环比 ' + view.holdersChg.toFixed(2) + '%）' : '') },
+                { label: '持仓评分 / 判定', value: view.sig.score.toFixed(0) + ' / ' + view.sig.label + '（' + view.sig.tone + '）' },
+                { label: 'HHI 集中度', value: view.conc.hhi.toFixed(3) + '（前10占比 ' + view.conc.top10.toFixed(2) + '%）' },
+                ...view.buckets.filter((b) => b.ratio > 0).map((b) => ({ label: '类型·' + b.label, value: b.ratio.toFixed(2) + '%' })),
+                { label: '报告期', value: period + (data.degraded ? '（降级：占流通股口径）' : '') }
+              ]}
+            />
           </Panel>
 
           <MathPanel>

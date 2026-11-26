@@ -18,6 +18,9 @@ import VolPage from './pages/VolPage';
 import RiskParityPage from './pages/RiskParityPage';
 import PcaPage from './pages/PcaPage';
 import MlPage from './pages/MlPage';
+import ChipsPage from './pages/ChipsPage';
+import PyramidPage from './pages/PyramidPage';
+import AiSettingsPage from './pages/AiSettingsPage';
 import HeaderBar from './components/HeaderBar';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -27,9 +30,11 @@ const NAV = [
   { path: '/stock', icon: '🔍', label: '个股分析' },
   { path: '/t', icon: '🔁', label: '做 T 分析' },
   { path: '/swing', icon: '📈', label: '波段 · 抄底' },
+  { path: '/pyramid', icon: '🪜', label: '橄榄型加仓' },
   { path: '/valuation', icon: '💎', label: '价值估值评断' },
   { path: '/sentiment', icon: '🌡️', label: '情绪晴雨表' },
   { path: '/institutions', icon: '🏛️', label: '机构持仓分析' },
+  { path: '/chips', icon: '🧱', label: '筹码分布分析' },
   { path: '/monitor', icon: '🔔', label: '实时监控' },
   { path: '/watchlist', icon: '⭐', label: '自选池 · 批量体检' },
   { path: '/compare', icon: '🆚', label: '多标的对比' },
@@ -39,7 +44,8 @@ const NAV = [
   { path: '/vol', icon: '🌊', label: '波动率模型' },
   { path: '/riskparity', icon: '⚖️', label: '风险平价' },
   { path: '/pca', icon: '🧬', label: 'PCA 统计套利' },
-  { path: '/ml', icon: '🤖', label: '机器学习 MLP' }
+  { path: '/ml', icon: '🤖', label: '机器学习 MLP' },
+  { path: '/ai-settings', icon: '⚙️', label: 'AI 设置' }
 ];
 
 export default function App() {
@@ -76,7 +82,7 @@ export default function App() {
         <div className="sidebar-foot">
           <div className="foot-title">模型覆盖</div>
           <div className="foot-tags">
-            <span>情绪六维</span><span>HMM</span><span>因子投票</span><span>GARCH</span><span>ERC</span><span>HRP</span><span>PCA</span><span>MLP</span>
+            <span>情绪六维</span><span>HMM</span><span>因子投票</span><span>GARCH</span><span>ERC</span><span>HRP</span><span>PCA</span><span>MLP</span><span>筹码分布</span><span>橄榄加仓</span>
           </div>
           <div className="foot-title" style={{ marginTop: 10 }}>市场覆盖</div>
           <div className="foot-tags">
@@ -108,10 +114,12 @@ export default function App() {
               <Route path="/stock" element={<StockPage />} />
               <Route path="/t" element={<TPage />} />
               <Route path="/swing" element={<SwingPage />} />
+              <Route path="/pyramid" element={<PyramidPage />} />
               <Route path="/valuation" element={<ValuationPage />} />
               <Route path="/sentiment" element={<SentimentPage />} />
               <Route path="/monitor" element={<MonitorPage />} />
               <Route path="/institutions" element={<InstitutionsPage />} />
+              <Route path="/chips" element={<ChipsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/momentum" element={<MomentumPage />} />
@@ -121,6 +129,7 @@ export default function App() {
               <Route path="/riskparity" element={<RiskParityPage />} />
               <Route path="/pca" element={<PcaPage />} />
               <Route path="/ml" element={<MlPage />} />
+              <Route path="/ai-settings" element={<AiSettingsPage />} />
               <Route path="*" element={<Overview />} />
             </Routes>
           </ErrorBoundary>

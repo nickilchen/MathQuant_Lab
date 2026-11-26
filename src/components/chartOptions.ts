@@ -735,6 +735,102 @@ export function thermometerOption(
   };
 }
 
+/**
+ * 筹码分布图：纵向价格、横向筹码占比的经典「横向峰」图。
+ * 现价用一条强势标线切分：下方（成本低于现价=获利盘）用涨色，上方（套牢盘）用跌色，
+ * 符合 A 股「涨红跌绿」的视觉惯例。可叠加 90% 成本区间与峰位标线。
+ */
+export function chipOption(
+  rows: { price: number; ratio: number }[],
+  opts: {
+    price: number;
+    costLow?: number;
+    costHigh?: number;
+    avgCost?: number;
+    peakPrices?: number[];
+    digits?: number;
+  }
+): EChartsOption {
+  const d = opts.digits ?? 2;
+  const fmt = (v: number) => v.toFixed(d);
+  // yAxis 用 value（价格），横向条形需要 y=价格、x=占比
+  const data = rows.map((r) => ({
+    value: [r.ratio * 100, r.price],
+    itemStyle: {
+      // 现价下方=获利盘（涨红），上方=套牢盘（跌绿）
+      color: r.price <= opts.price ? C.up : C.down,
+      opacity: 0.78
+    }
+  }));
+  const marks: { yAxis: number; label: string; color: string; type?: 'dashed' | 'solid'; width?: number }[] = [
+    { yAxis: opts.price, label: `现价 ${fmt(opts.price)}`, color: C.accent, width: 2 }
+  ];
+  if (opts.avgCost != null && Number.isFinite(opts.avgCost)) {
+    marks.push({ yAxis: opts.avgCost, label: `平均 ${fmt(opts.avgCost)}`, color: C.orange, type: 'dashed' });
+  }
+  for (const p of opts.peakPrices ?? []) {
+    if (Number.isFinite(p)) marks.push({ yAxis: p, label: `峰 ${fmt(p)}`, color: C.purple, type: 'dashed' });
+  }
+  return {
+    animationDuration: 500,
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: C.tipBg,
+      borderColor: C.tipBd,
+      borderWidth: 1,
+      textStyle: { color: C.text, fontSize: 12 },
+      formatter: (p) => {
+        const it = p as unknown as { data: { value: [number, number] } };
+        const [ratio, price] = it.data.value;
+        return `成本 ${fmt(price)}<br/>筹码占比 ${ratio.toFixed(2)}%${price <= opts.price ? '（获利）' : '（套牢）'}`;
+      }
+    },
+    grid: { left: 58, right: 22, top: 16, bottom: 40 },
+    xAxis: {
+      type: 'value',
+      name: '筹码占比 %',
+      nameTextStyle: { color: C.text, fontSize: 10 },
+      axisLabel: { color: C.text, fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` },
+      splitLine: { lineStyle: { color: C.grid } }
+    },
+    yAxis: {
+      type: 'value',
+      name: '成本价',
+      nameTextStyle: { color: C.text, fontSize: 10 },
+      axisLabel: { color: C.text, fontSize: 10, formatter: (v: number) => fmt(v) },
+      splitLine: { show: false },
+      scale: true
+    },
+    series: [
+      {
+        type: 'bar',
+        name: '筹码',
+        data,
+        barWidth: '96%',
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          label: { color: C.text, fontSize: 10, formatter: '{b}', position: 'end' },
+          data: marks.map((m) => ({
+            name: m.label,
+            yAxis: m.yAxis,
+            lineStyle: { color: m.color, type: m.type ?? 'solid', width: m.width ?? 1 }
+          }))
+        },
+        markArea:
+          opts.costLow != null && opts.costHigh != null && opts.costHigh > opts.costLow
+            ? {
+                silent: true,
+                itemStyle: { color: C.amber, opacity: 0.07 },
+                label: { color: C.text, fontSize: 10, position: 'insideTop', formatter: '90% 成本区' },
+                data: [[{ yAxis: opts.costLow }, { yAxis: opts.costHigh }]]
+              }
+            : undefined
+      }
+    ]
+  };
+}
+
 /** 涨跌分布：按箱体涨跌分色（红涨绿跌），0 用灰 */
 export function distBarOption(labels: string[], counts: number[], upFlags: boolean[]): EChartsOption {
   const base = tooltipBase();
@@ -775,6 +871,65 @@ export function distBarOption(labels: string[], counts: number[], upFlags: boole
           }
         })),
         barMaxWidth: 30
+      }
+    ]
+  };
+}
+
+/**
+ * 加仓阶梯图：纵轴五档回撤位（浅→深），横轴权重份数。
+ * 核心区（38.2/50/61.8）用红色高亮，两端用灰/琥珀，直观呈现「两头小、中间大」。
+ * 标签同时显示权重与股数，停用的末端档置灰。
+ */
+export function pyramidLadderOption(
+  rows: { label: string; weight: number; shares: number; zone: string; active: boolean }[]
+): EChartsOption {
+  const colorOf = (r: (typeof rows)[number]): string => {
+    if (!r.active) return C.gray;
+    return r.zone === '核心区' ? C.up : r.zone === '浅回撤' ? C.orange : C.amber;
+  };
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: C.tipBg,
+      borderColor: C.tipBd,
+      textStyle: { color: C.hmText },
+      formatter: (params) => {
+        const arr = params as unknown as { dataIndex: number }[];
+        const r = rows[arr[0]?.dataIndex ?? 0];
+        if (!r) return '';
+        return `${r.label} 回撤 · ${r.zone}<br/>权重 ${r.weight} 份 · ${r.shares} 股${r.active ? '' : '<br/>（该档已停用）'}`;
+      }
+    },
+    grid: { left: 54, right: 60, top: 20, bottom: 28 },
+    xAxis: {
+      ...numAxis('权重份数'),
+      minInterval: 1
+    },
+    yAxis: {
+      ...catAxis(rows.map((r) => r.label)),
+      inverse: true,
+      splitLine: { show: false }
+    },
+    series: [
+      {
+        type: 'bar',
+        data: rows.map((r) => ({
+          value: r.weight,
+          itemStyle: { color: colorOf(r), borderRadius: [0, 4, 4, 0], opacity: r.active ? 1 : 0.4 }
+        })),
+        barMaxWidth: 26,
+        label: {
+          show: true,
+          position: 'right',
+          color: C.text,
+          fontSize: 11,
+          formatter: (p) => {
+            const r = rows[(p as unknown as { dataIndex: number }).dataIndex];
+            return r ? `${r.weight} 份 · ${r.shares} 股` : '';
+          }
+        }
       }
     ]
   };

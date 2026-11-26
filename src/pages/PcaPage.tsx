@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import BacktestPanel from '../components/BacktestPanel';
 import { ControlBar, CtrlGroup, ChipMulti, EmptyTip, Loading, MathPanel, Panel, Select, Slider } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, heatmapOption, lineOption } from '../components/chartOptions';
 import { useApp, useKlines } from '../hooks/AppContext';
 import { BASKET_PRESETS, PCA_DEFAULT, PCA_POOL, SYMBOLS } from '../data/symbols';
@@ -207,6 +208,23 @@ export default function PcaPage() {
                 偏离越远，回归力量越强。该策略收益来源是<b>截面定价偏差</b>，与大盘方向基本无关（Beta 接近 0）。
               </p>
             </MathPanel>
+          </Panel>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页模型指标交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="PCA 统计套利"
+              note="组合为市场中性残差均值回归；解释度为主成分累计方差占比。"
+              facts={[
+                { label: '资产数', value: String(run.names.length) },
+                { label: '主成分数 K', value: String(run.explained.length) },
+                { label: '前 3 主成分解释度', value: run.explained.slice(0, 3).map((v) => (v * 100).toFixed(1) + '%').join(' / ') },
+                { label: '当前活跃配对数', value: String(run.activeCount[run.activeCount.length - 1] ?? 0) },
+                { label: '策略总收益', value: (run.metrics.totalReturn * 100).toFixed(2) + '%' },
+                { label: '夏普', value: run.metrics.sharpe.toFixed(2) },
+                { label: '最大回撤', value: (run.metrics.maxDD * 100).toFixed(2) + '%' },
+                { label: '基准总收益', value: (run.benchMetrics.totalReturn * 100).toFixed(2) + '%' }
+              ]}
+            />
           </Panel>
         </>
       )}

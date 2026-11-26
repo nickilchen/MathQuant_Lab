@@ -1730,3 +1730,106 @@
     display: none;
   }
 }
+
+/* ============ 通用 AI 指标解读按钮 ============ */
+.ai-analyze {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.ai-analyze-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ai-analyze-btn {
+  font-weight: 700;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+}
+.ai-analyze-hint {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.ai-analyze-body {
+  margin-top: 12px;
+}
+.ai-analyze-notice {
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 32%, var(--border));
+  border-radius: 8px;
+  padding: 8px 11px;
+  margin-bottom: 10px;
+}
+.ai-inline-link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+.ai-analyze-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+  margin-bottom: 10px;
+}
+.ai-analyze-empty {
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.8;
+}
+.ai-analyze-msg {
+  max-width: 88%;
+  padding: 8px 11px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  border: 1px solid rgba(127,127,127,0.18);
+}
+.ai-analyze-msg.user {
+  align-self: flex-end;
+  background: rgba(80,140,255,0.14);
+}
+.ai-analyze-msg.assistant {
+  align-self: flex-start;
+  background: rgba(127,127,127,0.10);
+}
+.ai-analyze-thinking {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.ai-analyze-error {
+  font-size: 12.5px;
+  color: var(--down);
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+.ai-analyze-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ai-analyze-input {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ai-analyze-foot {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.7;
+}

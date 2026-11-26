@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import EChart from '../components/EChart';
 import { C, lineOption } from '../components/chartOptions';
 import { CtrlGroup, EmptyTip, Loading, MetricGrid, Panel } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { useApp } from '../hooks/AppContext';
 import { searchStocks, type StockHit } from '../data/search';
 import { getSymbol, MARKET_LABEL, type Market } from '../data/symbols';
@@ -409,6 +410,26 @@ export default function ValuationPage() {
             </div>
           </Panel>
           )}
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页估值指标交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="价值估值评断"
+              symbol={picked?.name}
+              note="本页为相对估值：合理价 = TTM EPS（或 BPS）× 该股自身历史 PE/PB 中枢，非绝对内在价值。"
+              facts={[
+                { label: '判定', value: a.verdict },
+                { label: '估值方法', value: a.method === 'pe' ? 'PE' : a.method === 'pb' ? 'PB' : '自动' + (a.methodReason ? '（' + a.methodReason + '）' : '') },
+                { label: '现价', value: a.current.toFixed(2) },
+                { label: '合理价', value: a.fair != null ? a.fair.toFixed(2) : '—' },
+                { label: '悲观 / 乐观价', value: (a.low != null ? a.low.toFixed(2) : '—') + ' / ' + (a.high != null ? a.high.toFixed(2) : '—') },
+                { label: '现价相对合理价偏离', value: a.diffPct != null ? a.diffPct.toFixed(2) + '%' : '—' },
+                { label: 'TTM EPS', value: a.ttmEps == null ? '—' : a.ttmEps.toFixed(2) },
+                { label: '每股净资产 BPS', value: a.bps > 0 ? a.bps.toFixed(2) : '—' },
+                { label: '当前 PE / PB', value: (a.peNow == null ? '—' : a.peNow.toFixed(1)) + ' / ' + (a.pbNow == null ? '—' : a.pbNow.toFixed(1)) },
+                ...(a.latest ? [{ label: '最新季 ROE / 净利同比', value: (a.latest.roe == null ? '—' : a.latest.roe.toFixed(1) + '%') + ' / ' + (a.latest.profitYoY == null ? '—' : a.latest.profitYoY.toFixed(1) + '%') }] : [])
+              ]}
+            />
+          </Panel>
 
           <Panel title="⚠️ 口径与局限（务必先读）" icon="⚠️">
             <div style={{ fontSize: 13, lineHeight: 2.1, color: 'var(--text-2)' }}>

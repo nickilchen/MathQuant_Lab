@@ -11,6 +11,7 @@ import {
   SourcePill,
   fmtPct
 } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, gaugeOption, lineOption } from '../components/chartOptions';
 import { useApp } from '../hooks/AppContext';
 import { searchStocks, type StockHit } from '../data/search';
@@ -751,6 +752,31 @@ export default function StockPage() {
   止损 = max(52周低点, min(支撑, 现价×0.92))
   目标 = min(52周高点, max(阻力, 现价×1.12))`}</pre>
             </MathPanel>
+          </Panel>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页趋势、技术面、基本面指标交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="个股分析 · 趋势 / 技术面 / 基本面"
+              symbol={picked?.name}
+              note="趋势评分与技术面评分口径不同（前者评方向、后者评指标状态），分数不必一致。"
+              facts={[
+                { label: '现价', value: trend.price.toFixed(2) },
+                { label: '趋势评分 / 判定', value: trend.score.toFixed(0) + ' / ' + trend.verdict },
+                { label: '策略建议', value: s.actionLabel + '（' + s.stars + ' 星）' },
+                { label: '均线排列 / ADX', value: trend.maAlignment + ' / ' + trend.adx.toFixed(1) + '（' + trend.adxLevel + '）' },
+                { label: '通道位置 / 52周位置', value: (trend.donchianPos * 100).toFixed(0) + '% / ' + (trend.pos52 * 100).toFixed(0) + '%' },
+                { label: '支撑 / 阻力 / 止损', value: trend.support.toFixed(2) + ' / ' + trend.resistance.toFixed(2) + ' / ' + s.stopLoss.toFixed(2) },
+                ...(tech ? [
+                  { label: '技术面评分 / 判定', value: tech.score.toFixed(0) + ' / ' + tech.verdict },
+                  ...tech.rows.map((r) => ({ label: '技术·' + r.label, value: r.value + '（' + r.state + '）' }))
+                ] : []),
+                ...(prof ? [
+                  { label: 'PE / PB', value: (prof.pe == null ? '—' : prof.pe.toFixed(1)) + ' / ' + (prof.pb == null ? '—' : prof.pb.toFixed(1)) },
+                  { label: 'ROE / 毛利率', value: (prof.roe == null ? '—' : prof.roe.toFixed(1) + '%') + ' / ' + (prof.grossMargin == null ? '—' : prof.grossMargin.toFixed(1) + '%') },
+                  { label: '营收同比', value: prof.revenueYoY == null ? '—' : prof.revenueYoY.toFixed(1) + '%' }
+                ] : [])
+              ]}
+            />
           </Panel>
         </>
       )}

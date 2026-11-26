@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CtrlGroup, EmptyTip, Panel, SourcePill, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { useApp } from '../hooks/AppContext';
 import { searchStocks, type StockHit } from '../data/search';
 import { addWatchlist, loadWatchlist, MAX_WATCH, removeWatchlist, saveWatchlist } from '../data/watchlist';
@@ -278,6 +279,24 @@ export default function WatchlistPage() {
               </tbody>
             </table>
           </div>
+        </Panel>
+      )}
+
+      {rows.length > 0 && (
+        <Panel title="🤖 AI 指标解读" icon="🤖" desc="把自选池批量体检结果交给 AI 解读，只读不改任何设置">
+          <AiAnalyze
+            module="自选池 · 批量体检"
+            note="批量体检用趋势法七信号给每只标的打分与建议；仅为筛选参考，不构成投资建议。"
+            facts={[
+              { label: '自选数量', value: String(items.length) },
+              { label: '买入 / 持股 / 观望', value: (counts.buy ?? 0) + ' / ' + (counts.hold ?? 0) + ' / ' + (counts.wait ?? 0) },
+              { label: '减持 / 卖出', value: (counts.reduce ?? 0) + ' / ' + (counts.sell ?? 0) },
+              ...rows.filter((r) => r.trend).map((r) => ({
+                label: r.hit.name,
+                value: '评分 ' + r.trend!.score.toFixed(0) + ' · ' + r.trend!.strategy.actionLabel + (r.chg != null ? ' · 今日 ' + r.chg.toFixed(2) + '%' : '')
+              }))
+            ]}
+          />
         </Panel>
       )}
     </div>

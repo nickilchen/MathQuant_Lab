@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EChart from '../components/EChart';
 import { EmptyTip, Loading, MetricGrid, Panel, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { C, lineOption } from '../components/chartOptions';
 import { useApp } from '../hooks/AppContext';
 import { MARKET_LABEL, SYMBOLS } from '../data/symbols';
@@ -241,6 +242,23 @@ export default function ComparePage() {
               </div>
             </Panel>
           </div>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页多标的对比结果交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="多标的对比"
+              note="按共同交易日对齐、起点归一到 1；相对强弱以第一只标的为基准。"
+              facts={[
+                { label: '对比标的数', value: String(ready.length) },
+                { label: '标的列表', value: ready.map((it) => it.name).join('、') },
+                { label: '共同交易日', value: aligned.dates.length + ' 天（' + aligned.dates[0] + ' ~ ' + aligned.dates[aligned.dates.length - 1] + '）' },
+                ...ready.map((it, i) => ({
+                  label: it.name + ' 同期收益',
+                  value: periodReturn(i) != null ? (periodReturn(i)! * 100).toFixed(2) + '%' + (i > 0 && rsLast(i) != null ? '（相对强弱 ' + (rsLast(i)! * 100).toFixed(2) + '%）' : '') : '—'
+                })),
+                ...(corr.length >= 2 ? [{ label: '首两标的收益相关性', value: corr[0]?.[1] != null ? corr[0][1].toFixed(3) : '—' }] : [])
+              ]}
+            />
+          </Panel>
         </>
       )}
     </div>

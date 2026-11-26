@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import { C, barOption, distBarOption, lineOption, pieOption, radarOption, signedBarOption, thermometerOption } from '../components/chartOptions';
 import { EmptyTip, Loading, MathPanel, MetricGrid, Panel, SourcePill } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { clearSentimentCache, fetchSentiment, latestOf, type SentimentData } from '../data/sentiment';
 import { clearBuzzCache, fetchBuzz, type BuzzData } from '../data/buzz';
 import { analyzePosts, buzzScore, popularityScore, type PopularStock } from '../math/buzz';
@@ -1559,6 +1560,24 @@ export default function SentimentPage() {
                 但两者都可能持续。建议与「策略信号」「HMM 市场状态」交叉验证后再决策。
               </p>
             </div>
+          </Panel>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页情绪指标交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="情绪晴雨表"
+              note="情绪分是「当下状态」的度量，七维按权重合成；极端值常伴随反转但也可能持续。"
+              facts={[
+                { label: '综合温度', value: result.score.toFixed(1) + ' / 100（' + result.weather + '）' },
+                { label: '极端状态', value: result.extreme || '无' },
+                ...result.dims.map((d) => ({ label: '维度·' + d.label, value: d.score.toFixed(0) + '（权重 ' + (d.weight * 100).toFixed(0) + '%）' + (d.available ? '' : '·数据缺失') })),
+                ...(structure ? [
+                  { label: '消息/讨论多空比', value: structure.ratio == null ? '—' : (structure.ratio * 100).toFixed(0) + '%' },
+                  { label: '多空分档 / 样本', value: structure.band + ' / ' + structure.sample + ' 条' }
+                ] : []),
+                { label: '上涨 / 下跌家数', value: breadthInput.up + ' / ' + breadthInput.down },
+                { label: '涨停 / 跌停', value: breadthInput.limitUp + ' / ' + breadthInput.limitDown }
+              ]}
+            />
           </Panel>
 
           <MathPanel>

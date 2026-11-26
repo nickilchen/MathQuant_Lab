@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import EChart from '../components/EChart';
 import BacktestPanel from '../components/BacktestPanel';
 import { ControlBar, CtrlGroup, EmptyTip, Loading, MathPanel, MetricGrid, Panel, Select, Slider, fmtPct } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { heatmapOption, lineOption, stateColorOf } from '../components/chartOptions';
 import { hmmView } from '../math/hmm';
 import { useApp, useKline } from '../hooks/AppContext';
@@ -196,6 +197,24 @@ Baum-Welch（EM）参数更新:
             各状态的<b>平均日收益与年化波动绝对值</b>见上方「状态画像」表。
           </p>
         </MathPanel>
+      </Panel>
+
+      <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页模型指标交给 AI 解读，只读不改任何设置">
+        <AiAnalyze
+          module="HMM 市场状态识别"
+          note="状态观点为滤波概率加权的期望漂移，按 μ 极差归一化到 [-1,1]；方向不明的状态按波动命名。"
+          facts={[
+            { label: '状态数 K', value: String(labels.length) },
+            { label: '最可能状态', value: labels[mostLikelyIdx] },
+            { label: '最可能状态概率', value: ((currentProbs[mostLikelyIdx] ?? 0) * 100).toFixed(1) + '%' },
+            { label: '状态观点', value: (view >= 0 ? '+' : '') + view.toFixed(3) },
+            { label: '当前目标仓位', value: (positions[positions.length - 1] * 100).toFixed(1) + '%' },
+            ...stats.map((s) => ({ label: '状态·' + s.label, value: '日均 ' + (s.avgDailyRet * 100).toFixed(2) + '% / 年化波动 ' + (s.annVol * 100).toFixed(1) + '%' })),
+            { label: '策略总收益', value: (bt.metrics.totalReturn * 100).toFixed(2) + '%' },
+            { label: '夏普', value: bt.metrics.sharpe.toFixed(2) },
+            { label: '最大回撤', value: (bt.metrics.maxDD * 100).toFixed(2) + '%' }
+          ]}
+        />
       </Panel>
     </div>
   );

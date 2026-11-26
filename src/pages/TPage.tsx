@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import EChart from '../components/EChart';
 import { C, barOption, lineOption } from '../components/chartOptions';
 import { CtrlGroup, EmptyTip, Loading, MetricGrid, Panel } from '../components/ui';
+import { AiAnalyze } from '../components/AiAnalyze';
 import { useApp } from '../hooks/AppContext';
 import { searchStocks, type StockHit } from '../data/search';
 import { getSymbol, MARKET_LABEL, type Market } from '../data/symbols';
@@ -327,6 +328,27 @@ export default function TPage() {
               {rangeOpt && <EChart option={rangeOpt} height={320} />}
             </Panel>
           </div>
+
+          <Panel title="🤖 AI 指标解读" icon="🤖" desc="把本页做 T 测算交给 AI 解读，只读不改任何设置">
+            <AiAnalyze
+              module="做 T 日内回转分析"
+              symbol={picked?.name}
+              note="做 T 测算基于分时均价与已实现振幅，区间只是参考位，不代表一定成交。"
+              facts={[
+                { label: '判定', value: a.verdict + (a.verdictNote ? '（' + a.verdictNote + '）' : '') },
+                { label: '评分', value: a.score.toFixed(0) + ' / 100' },
+                { label: '最新价 / 昨收', value: a.last.toFixed(2) + ' / ' + a.prevClose.toFixed(2) },
+                { label: '分时均价 VWAP', value: a.vwap.toFixed(2) + '（偏离 ' + a.vwapDev.toFixed(2) + '%）' },
+                { label: '当日涨跌幅', value: a.pct.toFixed(2) + '%' },
+                { label: '当日振幅 / 近20日均振幅', value: a.dayRange.toFixed(2) + '% / ' + a.avgRange20.toFixed(2) + '%' },
+                { label: '剩余空间', value: a.remaining.toFixed(2) + '%' },
+                { label: '最小价差门槛', value: a.minSpreadPct.toFixed(2) + '%' },
+                { label: '单次往返费率', value: a.costRate.toFixed(3) + '%' },
+                { label: '建议数量', value: String(a.shares) + ' 股' },
+                { label: '预期净收益', value: a.expectedNet.toFixed(2) + ' 元' }
+              ]}
+            />
+          </Panel>
 
           <Panel title="⚠️ 规则与风险（务必先读）" icon="⚠️">
             <div style={{ fontSize: 13, lineHeight: 2.1, color: 'var(--text-2)' }}>

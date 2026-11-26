@@ -72,6 +72,9 @@ export default function HeaderBar() {
       <button type="button" className="gear-btn" onClick={() => setPaletteOpen(true)} title="搜索标的（Ctrl/Cmd + K）">
         🔍 搜索
       </button>
+      <button type="button" className="gear-btn" onClick={() => navigate('/ai-settings')} title="AI 设置（配置仅存本机）">
+        🤖 AI
+      </button>
       <ThemeSwitcher />
       <button type="button" className="gear-btn" onClick={() => setOpen((o) => !o)}>
         ⚙️ 参数
